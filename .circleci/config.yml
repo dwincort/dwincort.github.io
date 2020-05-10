@@ -1,0 +1,52 @@
+version: 2
+jobs:
+  build:
+    branches:
+      ignore:
+        - master
+    docker:
+      - image: fpco/stack-build:lts-15.11
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Cached Dependencies
+          keys:
+            # always cache everything
+            - deps-
+      - run:
+          name: Resolve/Update Dependencies
+          command: |
+            stack setup
+            stack build --dependencies-only -j1 --fast
+      - save_cache:
+          name: Cache Dependencies
+          key: deps-
+          paths:
+            - ~/.stack
+            - ./.stack-work
+      - run:
+          name: Build Site App
+          command: stack build --pedantic
+      - run:
+          name: Generate Static Site
+          command: |
+            stack exec site clean
+            stack exec site build
+      - run:
+          name: Publish GitHub Pages
+          working_directory: './_site'
+          command: |
+            # initalize repo
+            git checkout master
+            mkdir tmp
+            mv ./* tmp/
+            mv tmp/.git .
+            mv tmp/_site/* .
+            rm -rf tmp
+            git config user.name  'CircleCI'
+            git config user.email 'job@circleci.com'
+            # add generated files
+            git add .
+            git commit -m "publish $CIRCLE_SHA1 [ci skip]"
+            # push changes
+            git push origin master
