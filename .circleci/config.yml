@@ -11,8 +11,12 @@ jobs:
       - restore_cache:
           name: Restore Cached Dependencies
           keys:
-            # always cache everything
-            - deps-
+            # find a cache for the same stack.yaml
+            - stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
+            # when missing reuse from the same branch
+            - stack-{{ .Branch }}-
+            # when missing reuse the latest cache
+            - stack-
       - run:
           name: Resolve/Update Dependencies
           command: |
@@ -20,7 +24,7 @@ jobs:
             stack build --dependencies-only -j1 --fast
       - save_cache:
           name: Cache Dependencies
-          key: deps-
+          key: stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
           paths:
             - ~/.stack
             - ./.stack-work
