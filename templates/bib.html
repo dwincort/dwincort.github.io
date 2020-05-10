@@ -1,0 +1,283 @@
+$body$
+<script language="JavaScript" type="text/javascript">
+if (document.getElementById) {
+ document.write('<style type="text/css">.texter {display:none; font-family:verdana,arial,helvetica,sans-serif; font-size:12pt} @media print {.texter {display:block;}}</style>') }
+
+ var divNum = new Array("pub1", "pub2", "pub3", "pub4", "pub5", "pub6", "pub7", "pub8", "pub9", "pub10", "pub11", "pub12");
+
+function openClose(theID) {
+ for(var i=0; i < divNum.length; i++) {
+  if (divNum[i] == theID) {
+   if (document.getElementById(divNum[i]).style.display == "block") { document.getElementById(divNum[i]).style.display = "none" }
+   else { document.getElementById(divNum[i]).style.display = "block" }
+  }
+  else { document.getElementById(divNum[i]).style.display = "none"; }
+ }
+}
+</script>
+
+<style type="text/css">
+  cit:hover { COLOR: red}
+pre {
+    white-space: pre-wrap;       /* Since CSS 2.1 */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap;      /* Opera 4-6 */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: normal;       /* Internet Explorer 5.5+ */
+}
+</style>
+
+
+<ul>
+
+
+<li><b>A Framework for Adaptive Differential Privacy</b> (2017) [<a href="/data/adafuzz2017.pdf" target="_blank">PDF</a>] [<a href="https://github.com/dwincort/AdaptiveFuzz">Code</a>]
+<cit><p onClick="openClose('pub12')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, D , Haeberlen, A, Roth, A, and Pierce, B. "A Framework for Adaptive Differential Privacy". In: <i>International Conference on Functional Programming</i>. ACM, September 2017.</p></cit>
+ <div style="margin-left:2em;" id="pub12" class="texter">
+ <b>Abstract</b>
+<p>Differential privacy is a widely studied theory for analyzing sensitive data with a strong privacy guarantee---any change in an individual's data can have only a small statistical effect on the result---and a growing number of programming languages now support differentially private data analysis. A common shortcoming of these languages is poor support for adaptivity.  In practice, a data analyst rarely wants to run just one function over a sensitive database, nor even a predetermined sequence of functions with fixed privacy parameters; rather, she wants to engage in an interaction where, at each step, both the choice of the next function and its privacy parameters are informed by the results of prior functions. Existing languages support this scenario using a simple composition theorem, which often gives rather loose bounds on the actual privacy cost of composite functions, substantially reducing how much computation can be performed within a given privacy budget.  The theory of differential privacy includes other theorems with much better bounds, but these have not yet been incorporated into programming languages.
+<p>We propose a novel framework for adaptive composition that is elegant, practical, and implementable.  It consists of a reformulation based on typed functional programming of the privacy filters of Rogers et al. (2016), together with a concrete realization of this framework in the design and implementation of a new language, called Adaptive Fuzz.  Adaptive Fuzz transplants the core static type system of Fuzz to the adaptive setting by wrapping the Fuzz typechecker and runtime system in an outer adaptive layer, allowing Fuzz programs to be conveniently constructed and typechecked on the fly. We describe an interpreter for Adaptive Fuzz and report results from two case studies demonstrating its effectiveness for implementing common statistical algorithms over real data sets.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @Article{AdaFuzzICFP2017,
+      author    = {Winograd-Cort, Daniel and Andreas Haeberlen and Aaron Roth and Benjamin Pierce},
+      title     = {A {F}ramework for {A}daptive {D}ifferential {P}rivacy},
+      journal   = {Proc. ACM Program. Lang.},
+      volume    = {1},
+      number    = {ICFP},
+      articleno = {10},
+      numpages  = {29},
+      location  = {Oxford, UK},
+      month     = {September},
+      pages     = {10:1--10:29},
+      publisher = {{ACM}},
+      year      = {2017},
+      doi       = {http://dx.doi.org/10.1145/3110254}
+    }
+</pre></div><br /></div>
+
+
+
+<li><b>Partial Evaluation for Typechecking</b> (In Submission) [<a href="/data/peval2017.pdf" target="_blank">PDF</a>]
+<cit><p onClick="openClose('pub11')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, D, Zhang, H, and Pierce, B. Partial Evaluation for Typechecking. In Submission.</p></cit>
+ <div style="margin-left:2em;" id="pub11" class="texter">
+ <b>Abstract</b>
+<p>We study a small functional language in which programs are partially evaluated before typechecking, achieving some of the useful effects of preprocessors, template systems, and macros in a pleasantly straightforward way. We present the system three ways—a declarative formulation reflecting the programmer’s view of its behavior, a nondeterministic algorithm uniformly capturing a wide range of possible heuristic choices about how an implementation might interleave partial evaluation and typechecking, and a concrete instance embodying one specific set of heuristics—and show that all three produce the same typings "in the limit." We also show that the system enjoys standard properties including unicity of types, progress, and
+preservation.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @unpublished{WinogradCortPEval,
+      author = {\textbf{Winograd-Cort, D} and Hengchu Zhang and Benjamin Pierce},
+      title = {Partial {E}valuation for {T}ypechecking},
+      note = {In Submission.}
+    }
+</pre></div><br /></div>
+
+
+<li><b>A Framework for Adaptive Differential Privacy</b> (2016) [Poster]
+<cit><p onClick="openClose('pub10')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, D , Haeberlen, A, Roth, A, and Pierce, B. A Framework for Adaptive Differential Privacy. In Theory and Practice of Differential Privacy, New York, New York, June 2016.</p></cit>
+ <div style="margin-left:2em;" id="pub10" class="texter">
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @conference{WinogradCort2016TPDP,
+      author = {\textbf{Winograd-Cort, D} and Andreas Haeberlen and Aaron Roth and Benjamin Pierce},
+      title = {A {F}ramework for {A}daptive {D}ifferential {P}rivacy},
+      booktitle = {Theory and Practice of Differential Privacy},
+      year = {2016},
+      address = {New York, New York},
+      month = {June},
+    }
+</pre></div><br /></div>
+
+
+
+<li><b>Effects, Asynchrony, and Choice in Arrowized Functional Reactive Programming</b> (2015) [<a href="/data/dwc-yale-formatted-dissertation.pdf" target="_blank">Official PDF</a>, <a href="/data/dwc-dissertation.pdf" target="_blank">Single-Spaced PDF</a>, <a href="/data/dwc-yale-dissertation-slides.pdf" target="_blank">Defense Slides</a>]
+<cit><p onClick="openClose('pub9')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, D. Effects, Asynchrony, and Choice in Arrowized Functional Reactive Programming. PhD thesis, Yale University, December 2015.</p></cit>
+ <div style="margin-left:2em;" id="pub9" class="texter">
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @phdthesis{WinogradCort2015Dissertation,
+      title    = {Effects, {A}synchrony, and {C}hoice in {A}rrowized {F}unctional {R}eactive {P}rogramming},
+      author   = {Winograd-Cort, Daniel},
+      school   = {Yale University},
+      year     = {2015},
+      month    = {December}
+    }
+</pre></div><br /></div>
+
+
+<li><b>Communicating Functional Reactive Processes</b> (unpublished) [<a href="/contact">Contact me</a> if you are interested in seeing a draft]
+<cit><p onClick="openClose('pub8')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel and Hudak, Paul. Communicating Functional Reactive Processes. Unpublished.</p></cit>
+ <div style="margin-left:2em;" id="pub8" class="texter">
+ <b>Abstract</b>
+<p>Functional Reactive Programming (FRP) is a model that facilitates programming real-time and reactive systems by utilizing signal functions that transform streams of inputs into streams of outputs.  One of the great benefits of FRP is that it allows the programmer to assume that instantaneous values on those streams are processed infinitely fast, an illusion that we call the Fundamental Abstraction of FRP.  To maintain this illusion, FRP enforces a synchronization to the program as a whole.  However, when we desire portions of a program to run faster than others, this synchronization becomes a burden.
+<p>Introducing asynchrony is not as simple as merely providing an asynchronizing operator---indeed, doing so haphazardly could shatter the fundamental abstraction entirely.  However, if we consider each asynchronous process as having its own notion of time and carefully mediate communication between them, we can retain the abstraction on a per-process level and still reap the benefits of asynchrony.  We present just such a design, providing demonstrative examples, a formal semantics, and an implementation in Haskell.  We call this Communicating Functional Reactive Processes.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @unpublished{WinogradCortCFRP,
+      author = {Winograd-Cort, Daniel and Hudak, Paul},
+      title = {Communicating {F}unctional {R}eactive {P}rocesses},
+      note = {Unpublished.}
+    }
+</pre></div><br /></div>
+
+
+<li><b>Real-Time Interactive Music in Haskell</b> (2015) [<a href="/data/realtimemusicFARM2015.pdf" target="_blank">PDF</a>]
+<cit><p onClick="openClose('pub7')" style="cursor:hand; cursor:pointer; margin-left:2em;">Hudak, Paul, Quick, Donya, Santolucito, Mark, and Winograd-Cort, Daniel. "Real-Time Interactive Music in Haskell".
+In Proceedings of the 3rd ACM SIGPLAN International Workshop on Functional Art, Music, Modelling
+and Design, FARM 2015, pages 15–16, New York, NY, USA, 2015. ACM.</p></cit>
+ <div style="margin-left:2em;" id="pub7" class="texter">
+ <b>Abstract</b>
+<p>Euterpea and UISF are two recently released Haskell libraries on Hackage that facilitate the creation of interactive musical programs.  We show an example of using these two libraries in combination with Haskell’s support for parallelism to create a complex application that generates music in real time in response to user input from MIDI controllers.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @inproceedings{Hudak:2015:RIM:2808083.2808087,
+      author = {Hudak, Paul and Quick, Donya and Santolucito, Mark and \textbf{Winograd-Cort, D}},
+      title = {Real-{T}ime {I}nteractive {M}usic in {H}askell},
+      booktitle = {Proceedings of the 3rd ACM SIGPLAN International Workshop on Functional Art, Music, Modelling and Design},
+      series = {FARM 2015},
+      year = {2015},
+      location = {Vancouver, BC, Canada},
+      pages = {15--16},
+      numpages = {2},
+      publisher = {ACM},
+      address = {New York, NY, USA},
+    }
+</pre></div><br /></div>
+
+
+
+<li><b>Musical User Interface</b> (2015)
+<cit><p onClick="openClose('pub6')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel and Hudak, Paul. Musical User Interface. In Hudak, P, editor, <i>The Haskell School of Music – From Signals to Symphonies</i>. (Version 2.7), January 2015.</p></cit>
+ <div style="margin-left:2em;" id="pub6" class="texter">
+ <b>Information</b>
+<p>This is a chapter of the book "The Haskell School of Music – From Signals to Symphonies" that I wrote to provide a Euterpea-centric introduction to the UISF library.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @incollection{hsomuisf,
+      author      = {Winograd-Cort, Daniel},
+      title       = {Musical {U}ser {I}nterface},
+      editor      = {Hudak, Paul},
+      booktitle   = {The Haskell School of Music -- From Signals to Symphonies},
+      publisher   = {(Version 2.7)},
+      year        = {2015},
+      month       = {January},
+    }
+</pre></div><br /></div>
+
+
+<li><b>Settable and Non-Interfering Signal Functions for FRP</b> (2014) [<a href="/data/nichoiceICFP2014.pdf" target="_blank">PDF</a>] [<a href="https://www.youtube.com/watch?v=zgNRM8tZguY">Talk</a> (<a href="/data/nichoiceICFP2014Presentation.pdf">Slides</a>)] [Experimental Code <a href="https://github.com/dwincort/SettableArrow">(1)</a> <a href="https://github.com/dwincort/CCA">(2)</a>]
+<cit><p onClick="openClose('pub5')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel and Hudak, Paul. Settable and Non-Interfering Signal Functions for FRP. In: <i>International Conference on Functional Programming</i>. ACM, September 2014.</p></cit>
+ <div style="margin-left:2em;" id="pub5" class="texter">
+ <b>Abstract</b>
+<p>Functional Reactive Programming (FRP) provides a method for programming continuous, reactive systems by utilizing signal functions that, abstractly, transform continuous input signals into continuous output signals. These signals may also be streams of events, and indeed, by allowing signal functions themselves to be the values carried by these events (in essence, signals of signal functions), one can conveniently make discrete changes in program behavior by "switching" into and out of these signal functions. This higher-order notion of switching is common among many FRP systems, in particular those based on arrows, such as Yampa.
+<p>Although convenient, the power of switching is often an overkill and can pose problems for certain types of program optimization (such as causal commutative arrows), as it causes the structure of the program to change dynamically at run-time. Without a notion of just-in-time compilation or related idea, which itself is beset with problems, such optimizations are not possible at compile time.
+<p>This paper introduces two new ideas that obviate, in a predominance of cases, the need for switching. The first is a non-interference law for arrows with choice that allows an arrowized FRP program to dynamically alter its own structure (within statically limited bounds) as well as abandon unused streams. The other idea is a notion of a settable signal function that allows a signal function to capture its present state and later be restarted from some previous state. With these two features, canonical uses of higher-order switchers can be replaced with a suitable first-order design, thus enabling a broader range of static optimizations.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @InProceedings{WinogradCort2014ICFP,
+      author = {Winograd-Cort, Daniel and Hudak, Paul},
+      title = {Settable and {N}on-{I}nterfering {S}ignal {F}unctions for {FRP}},
+      booktitle = {ICFP},
+      numpages = {13},
+      pages = {213--225},
+      publisher = {{ACM}},
+      year = {2014},
+      location = {Gotenberg, Sweden},
+      month = {September}
+    }
+</pre></div><br /></div>
+
+
+<li><b>Wormholes: Introducing Effects to FRP</b> (2012) [<a href="/data/Winograd-Cort-Wormholes.pdf" target="_blank">PDF</a>] [<a href="https://www.youtube.com/watch?v=KZewVsyTw60">Talk</a>]
+<cit><p onClick="openClose('pub4')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel and Hudak, Paul. Wormholes: Introducing Effects to FRP. In: <i>Haskell Symposium</i>. ACM, September 2012.</p></cit>
+ <div style="margin-left:2em;" id="pub4" class="texter">
+ <b>Abstract</b>
+<p>Functional reactive programming (FRP) is a useful model for programming real-time and reactive systems in which one defines a signal function to process a stream of input values into a stream of output values.  However, performing side effects (e.g. memory mutation or input/output) in this model is tricky and typically unsafe.  In previous work, Winograd-Cort et al. introduced resource types and wormholes to address this problem.
+<p>This paper better motivates, expands upon, and formalizes the notion of a wormhole to fully unlock its potential.  We show, for example, that wormholes can be used to define the concept of causality.  This in turn allows us to provide behaviors such as looping, a core component of most languages, without building it directly into the language.  We also improve upon our previous design by making wormholes less verbose and easier to use.
+<p>To formalize the notion of a wormhole, we define an extension to the simply typed lambda calculus, complete with typing rules and operational semantics.  In addition, we present a new form of semantic transition that we call a temporal transition to specify how an FRP program behaves over time and to allow us to better reason about causality.  As our model is designed for a Haskell implementation, the semantics are lazy.  Finally, with the language defined, we prove that our wormholes indeed allow side effects to be performed safely in an FRP framework.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @InProceedings{WinogradCort2012HS,
+      author = {Winograd-Cort, Daniel and Hudak, Paul},
+      title = {Wormholes: {I}ntroducing {E}ffects to {FRP}},
+      booktitle = {Haskell Symposium},
+      pages = {91--103},
+      numpages = {13},
+      publisher = {{ACM}},
+      year = {2012},
+      location = {Copenhagen, Denmark},
+      month = {September}
+    }
+</pre></div><br /></div>
+
+
+<li><b>Virtualizing Real-World Objects in FRP</b> (2012) [<a href="/data/VROinFRP-TR1446.pdf" target="_blank">PDF</a>] [<a href="http://haskell.org/haskellwiki/HaskellImplementorsWorkshop/2011">Haskell Implementors' Workshop Talk</a>]
+<cit><p onClick="openClose('pub3')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel and Liu, Hai and Hudak, Paul. Virtualizing Real-World Objects in FRP. In: <i>Practical Aspects of Declarative Languages</i>, volume 7149 of Lecture Notes in Computer Science, pages 227-241. Springer-Verlag, January 2012.</p></cit>
+ <div style="margin-left:2em;" id="pub3" class="texter">
+ <b>Abstract</b>
+<p>We begin with a <i>functional reactive programming</i> (FRP) model in which every program is viewed as a signal function that converts a stream of input values into a stream of output values. We observe that objects in the real world – such as a keyboard or sound card – can be thought of as signal functions as well. This leads us to a radically different approach to I/O – instead of treating real-world objects as being external to the program, we expand the sphere of influence of program execution to include them within the program. We call this <i>virtualizing real-world objects</i>. We explore how even virtual objects, such as GUI widgets, and non-local effects, such as are needed for debugging (using something that we call a "wormhole") and random number generation, can be handled in the same way.
+<p>Our methodology may at first seem naive – one may ask how we prevent a virtualized device from being copied, thus potentially introducing non-determinism as one part of a program competes for the same resource as another. To solve this problem, we introduce the notion of a <i>resource type</i> that assures that a virtualized object is not duplicated and that I/O and non-local effects are safe. Resource types also provide a deeper level of transparency: by inspecting the type, one can clearly see exactly what resources are being used. We use arrows, type classes, associated types, and type families to implement our ideas in Haskell, and the result is a safe, effective, and transparent approach to stream-based I/O.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @techreport{WinogradCort-TR1446,
+      author = {Winograd-Cort, Daniel and Liu, Hai and Hudak, Paul},
+      title = {Virtualizing Real-World Objects in FRP},
+      institution = {Yale University},
+      year = {2011},
+      month = {July},
+      number = {YALEU/DCS/RR-1446}
+    }
+</pre></div><br /></div>
+
+
+<li><b>Deducing Relevant Bridge Bidding Information from Double Dummy Data</b> (2008) [<a href="/data/DWC_Bridge_Thesis.pdf" target="_blank">PDF</a>]
+<cit><p onClick="openClose('pub2')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel.  Deducing Relevant Bridge Bidding Information from Double Dummy Data.  Brown University undergraduate thesis, May 2008.</p></cit>
+ <div style="margin-left:2em;" id="pub2" class="texter">
+ <b>Abstract</b>
+<p>The game of Bridge has entertained card players for many years. The players start by evaluating their hands individually and then using this information to bid for a contract. Bidding systems provide a way for partners to communicate the values of their hands so they can find an appropriate contract, but they are often imprecise and can lead teams into contracts that they cannot keep. Unfortunately, creating a new bidding system is a challenging task. There are approximately 10^28 ways to deal 13 cards each to 4 people from a 52 card deck, but there are 10^47 possible bidding sequences. Therefore, instead of creating a new bidding system, I propose to determine what information is most important to convey in order to achieve success. As opposed to hand evaluation, this system will use relationships between two partners’ hands. For this project, I train neural networks using sample simplified hands of Bridge (known as Double Dummy Bridge results) to find which particular patterns and relationships of cards represent the necessary information needed to complete the best possible contract. Although I am unable to extract meaningful rules from the neural networks to find these combinations, I show the proper steps and the places for improvement.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @MastersThesis{WinogradCort-bridgeThesis,
+      type = {Undergraduate Honors Thesis},
+      title = {Deducing Relevant Bridge Bidding Information from Double Dummy Data},
+      author = {Winograd-Cort, Daniel},
+      school = {Brown University},
+      year = {2008},
+      month = {May}
+    }
+</pre></div><br /></div>
+
+
+<li><b>From Stirling to Wallis</b> (2005) [<a href="/data/PME_12-3_p149.jpg" target="_blank">Image</a>]
+<cit><p onClick="openClose('pub1')" style="cursor:hand; cursor:pointer; margin-left:2em;">Winograd-Cort, Daniel.  From Stirling to Wallis. The Pi Mu Epsilon Journal, Vol. 12-3, Fall 2005.</p></cit>
+ <div style="margin-left:2em;" id="pub1" class="texter">
+ <b>Abstract</b>
+<p>A rigorous mathematical proof of Wallis' Formula using infinite series and Stirling's Formula.
+ <div style="border:1px solid white;">
+     <p style="height: 1px;">Bibtex:
+       <pre>
+    @Article{WinogradCort-StirlingWallis,
+      title = {From Stirling to Wallis},
+      author = {Winograd-Cort, Daniel},
+      journal   = "The Pi Mu Epsilon Journal",
+      pages = {149},
+      year = {2005},
+      volume = {12},
+      number = {3}
+    }
+</pre></div><br /></div>
+
+
+</ul>

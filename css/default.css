@@ -1,0 +1,297 @@
+html {
+  font-size: 62.5%;
+  background-color: #090909;
+}
+
+body {
+  /* font-family:Helvetica,Arial,sans-serif; */
+  font-family:Verdana,sans-serif;
+  letter-spacing:0.05rem;
+  line-height:2.4rem;
+  font-size: 1.5rem;
+  color: #c2c2c2;
+}
+
+header {
+}
+
+a, a:link, a:visited { text-decoration:none; color: #1fd2ff; }
+a:hover, a:active { color: #00a3cc; }
+
+nav {
+  border-top: 0.2rem solid #ddd;
+  text-align: center;
+  border-bottom: 0.2rem solid #ddd;
+  padding-top: 1em;
+  padding-bottom: 1em;
+}
+
+nav a, nav a:link, nav a:visited {
+  font-size: 1.6rem;
+  color: #999;
+  letter-spacing:1px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+nav a:hover {color:#00a3cc}
+
+nav a.active {
+  color: #00a3cc;
+}
+
+footer {
+  margin-top: 3rem;
+  padding: 1.2rem 0;
+  border-top: 0.2rem solid #ddd;
+  font-size: 1.2rem;
+  color: #444;
+}
+
+footer a, footer a:link, footer a:visited { color: #006680 }
+footer a:hover, footer a:active { color: #008fb3; }
+
+quote {
+  color: #00a3cc;
+}
+
+h1 {
+  font-size: 2.4rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+article .header {
+  font-size: 1.4rem;
+  font-style: italic;
+  color: #555;
+}
+
+.site-title a {
+  font-family:Helvetica,Arial,sans-serif;
+  font-size: 4.4rem;
+  line-height:5.2rem;
+  letter-spacing:10px;
+  font-weight: bold;
+  color: #1fd2ff;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.site-description {
+  color: #adefff;
+  text-align: center;
+  text-decoration: none;
+}
+
+@media (max-width: 539px) {
+  body {
+    width: 90%;
+    margin: 0;
+    padding: 0 5%;
+  }
+  header {
+    margin: 4.2rem 0;
+  }
+  nav {
+    margin: 0 auto 3rem;
+  }
+  footer {
+    text-align: center;
+  }
+  .site-title {
+    text-align: center;
+    margin: 1rem auto 3rem;
+  }
+  .site-title a {
+    font-size: 2.4rem;
+    line-height:3.2rem;
+    letter-spacing:6px;
+  }
+  nav a {
+    display: block;
+    line-height: 1.6;
+  }
+}
+
+@media (min-width: 540px) {
+  body {
+    width: 90%;
+    margin: 0;
+    padding: 0 5%;
+  }
+  header {
+    margin: 0 0 3rem;
+    padding: 1.2rem 0;
+  }
+  nav {
+    margin: 0 auto 3rem;
+  }
+  footer {
+    text-align: center;
+  }
+  .site-title {
+    text-align: center;
+    margin: 1rem auto 3rem;
+  }
+  .site-title a {
+  }
+  nav a {
+    display: inline;
+    margin: 0 0.6rem;
+  }
+}
+
+@media (min-width: 1030px) {
+  body {
+    width: 90rem;
+    margin: 0 auto;
+    padding: 0;
+  }
+  header {
+    margin: 0 0 3rem;
+    padding: 1.2rem 0;
+  }
+  nav {
+    margin: 0;
+  }
+  nav a {
+    margin: 0 0 0 1.2rem;
+    display: inline;
+  }
+  footer {
+    text-align: right;
+  }
+  .site-title {
+    text-align: center;
+    margin: 1rem auto 3rem;
+  }
+  .site-title a {
+    float: center;
+    font-size: 4.4rem;
+  }
+}
+
+/* CSS for images */
+
+.frontimage {
+  max-width: 60%;
+  height: auto;
+  width: auto;
+}
+
+.rightsideimage {
+  max-width: 42%;
+  float: right;
+  padding-top: 0px;
+  padding-right: 0px;
+  padding-bottom: 0px;
+  padding-left: 40px;
+  height: auto;
+  width: auto;
+  clear: both
+}
+
+@media (max-width: 900px) {
+  .frontimage {
+    max-width: 70%;
+    height: auto;
+    width: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .frontimage {
+    max-width: 80%;
+    height: auto;
+    width: auto;
+  }
+  .rightsideimage {
+    max-width: 50%;
+    float: right;
+    padding-top: 10px;
+    padding-right: 0px;
+    padding-bottom: 10px;
+    padding-left: 20px;
+    height: auto;
+    width: auto;
+    clear: both
+  }
+}
+
+
+@media (max-width: 450px) {
+  .frontimage {
+    max-width: 90%;
+    height: auto;
+    width: auto;
+  }
+  .rightsideimage {
+    max-width: 90%;
+    float: none;
+    padding-top: 5px;
+    padding-right: 50px;
+    padding-bottom: 10px;
+    padding-left: 5px;
+    height: auto;
+    width: auto;
+    clear: both
+  }
+}
+
+
+.overlay {
+  position: relative;
+  max-width: 100%;
+  padding-right: 80px;
+  padding-left:  80px;
+}
+
+.contactimage {
+  height: auto;
+  width: auto;
+  max-width: 100%;
+}
+
+overlayText {
+  position: absolute;
+  top: 30px;
+  color: #000;
+  font-size: 120%;
+  padding: 0px 100px;
+  left: 0;
+  width: 44%;
+}
+
+bigname {
+  font-size: 3rem;
+}
+
+@media (max-width: 700px) {
+  .overlay {
+    position: static;
+    padding: 0px;
+  }
+
+  .contactimage {
+    height: auto;
+    width: auto;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 80%;
+  }
+
+  overlayText {
+    position: static;
+    color: #c2c2c2;
+    font-size: 100%;
+    padding: 0px;
+  }
+
+  bigname {
+    color: #c2c2c2;
+  }
+}
