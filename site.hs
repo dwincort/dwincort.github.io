@@ -11,7 +11,8 @@ main = do
   hakyll $ do
     match ("robots.txt"
       .||. "images/*"
-      .||. "data/*") $ do
+      .||. "data/*"
+      .||. "CNAME") $ do
       route   idRoute
       compile copyFileCompiler
 

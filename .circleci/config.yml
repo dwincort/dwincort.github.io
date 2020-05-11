@@ -5,18 +5,20 @@ jobs:
       ignore:
         - master
     docker:
-      - image: fpco/stack-build:lts-15.11
+      - image: fpco/stack-build:lts-14.27
     steps:
       - checkout
       - restore_cache:
           name: Restore Cached Dependencies
           keys:
-            # find a cache for the same stack.yaml
-            - stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
-            # when missing reuse from the same branch
-            - stack-{{ .Branch }}-
-            # when missing reuse the latest cache
-            - stack-
+            # # find a cache for the same stack.yaml
+            # - stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
+            # # when missing reuse from the same branch
+            # - stack-{{ .Branch }}-
+            # # when missing reuse the latest cache
+            # - stack-
+            # Uncomment the above some time, but for now, juse use deps-
+            - deps-
       - run:
           name: Resolve/Update Dependencies
           command: |
@@ -24,13 +26,14 @@ jobs:
             stack build --dependencies-only -j1 --fast
       - save_cache:
           name: Cache Dependencies
-          key: stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
+          # key: stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
+          key: deps-
           paths:
             - ~/.stack
             - ./.stack-work
       - run:
           name: Build Site App
-          command: stack build --pedantic
+          command: stack build
       - run:
           name: Generate Static Site
           command: |
