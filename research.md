@@ -23,7 +23,7 @@ I have volunteered and been active at a number of conferences and workshops:
 
 - I was on the program committee for [PADL](https://popl18.sigplan.org/track/PADL-2018) (the symposium on the Practical Aspects of Declarative Programming) 16, 17, and 18.
 - I was on the artifact evaluation committee for [POPL](https://popl18.sigplan.org/) 2018.
-- I was on the program committee for [FARM](https://functional-art.org/) in 2018, the Program Chair in 2019, and the General Chair in 2020.
+- I was on the program committee for [FARM](https://functional-art.org/) in 2018 and the Program Chair in 2019.
 
 # Publications
 
