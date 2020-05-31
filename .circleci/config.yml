@@ -5,7 +5,7 @@ jobs:
       ignore:
         - master
     docker:
-      - image: fpco/stack-build:lts-14.27
+      - image: futtetennista/hakyll:4.12.5.1
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -35,21 +35,22 @@ jobs:
           command: |
             stack exec site clean
             stack exec site build
+      - store_artifacts:
+          path: _site
+          destination: built_site
       - run:
           name: Publish GitHub Pages
           command: |
             echo "Now setting up git"
-            git config --global -l
             git config user.name  'CircleCI'
-            git config user.email 'dwincort@gmail.com'
-            echo "clone master and cd to it"
-            git clone git@github.com:dwincort/dwincort.github.io.git
-            cd dwincort.github.io
+            git config user.email 'job@circleci.com'
+            echo "Switch to master"
+            git checkout master
             echo "Remove the current site stuff ..."
             rm -r `ls -a | grep -v "^\.$\|^\.\.$\|^\.git$\|^\.gitignore$\|^_site$"`
             echo "... and replace it with what's in _site."
-            mv ../_site/* .
-            # rm -r _site
+            mv ./_site/* .
+            rm -r _site
             echo "The new site contents is:"
             ls -al
             echo "Adding generated files and committing"
