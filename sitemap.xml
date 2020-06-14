@@ -7,8 +7,29 @@
   </url>
 
   <url>
-    <loc>https://danwc.com/posts/2020-05-08-post/index.html</loc>
-    <lastmod>May  8, 2020</lastmod>
+    <loc>https://danwc.com/posts/2020-06-14-metamorph/index.html</loc>
+    <lastmod>June 14, 2020</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://danwc.com/posts/2020-06-01-row-types-for-csv-library/index.html</loc>
+    <lastmod>June  1, 2020</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://danwc.com/posts/2020-06-01-TypedErrors/index.html</loc>
+    <lastmod>June  1, 2020</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://danwc.com/posts/2020-06-01-TypeSurgery/index.html</loc>
+    <lastmod>June  1, 2020</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

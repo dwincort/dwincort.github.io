@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Row-Types Metamorphism — Daniel Winograd-Cort</title>
+    
+    <meta name="keywords" content="haskell, row-types, metamorph">
+
+    <link rel="shortcut icon" type="image/x-icon" href="../../images/haskell-logo.png?format=100w" />  <!-- href="/favicon.ico?format=100w" -->
+    <link rel="canonical" href="http://www.danwc.com" />
+    <meta property="og:site_name" content="Daniel Winograd‑Cort" />
+    <meta property="og:title" content="Row-Types Metamorphism — Daniel Winograd-Cort" />
+    <meta property="og:url" content="https://danwc.com/posts/2020-06-14-metamorph/index.html" />
+    <meta property="og:type" content="website" />
+    <meta itemprop="name" content="Row-Types Metamorphism — Daniel Winograd-Cort" />
+    <meta itemprop="url" content="https://danwc.com/posts/2020-06-14-metamorph/index.html" />
+    <meta name="twitter:title" content="Daniel Winograd‑Cort" />
+    <meta name="twitter:url" content="https://danwc.com/posts/2020-06-14-metamorph/index.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="description" content />
+
+    <link rel="stylesheet" href="../../css/default.css" />
+  </head>
+  <body>
+    <header>
+      <div class="site-title">
+        <h1 class="site-title site-title">
+          <a href="../../" title="Daniel Winograd‑Cort">
+            <span>Daniel Winograd‑Cort</span>
+          </a>
+        </h1>
+      </div>
+      <div class="site-description">
+        <p>Senior Software Engineer at Luminous Computing</p>
+      </div>
+
+      <nav>
+        <a href="../../posts">Posts</a>
+        <a href="../../research">Research</a>
+        <a href="../../projects">Projects</a>
+        <a href="../../teaching">Teaching</a>
+        <a href="../../data/danwc-resume.pdf" target="_blank">Resume</a>
+        <a href="../../personal">Personal</a>
+        <a href="../../contact">Contact</a>
+      </nav>
+    </header>
+
+    <main role="main">
+      <article>
+    <section class="header">
+        
+        Posted on June 14, 2020
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="../../css/syntax.css" />
+        <h1 id="row-types-metamorphism">Row-Types Metamorphism</h1>
+<h2 id="heterogeneous-mapping">Heterogeneous Mapping</h2>
+<p>One of the very powerful features of row-types records is the ability to map over them. Mapping over a list or another functorial object is rather straightforward, but how does one map over a heterogeneous record? What would the type of such a function even be? To gain some insight into this question, we can start by considering what it might mean to map a function over a native Haskell record. Consider a record such as the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">data</span> <span class="dt">MyRecord</span> <span class="fu">=</span> <span class="dt">MyRecord</span></a>
+<a class="sourceLine" id="cb1-2" title="2">  {<span class="ot"> a ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb1-3" title="3">  ,<span class="ot"> b ::</span> <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb1-4" title="4">  ,<span class="ot"> c ::</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb1-5" title="5">  }</a></code></pre></div>
+<p>And we’re saying we want a function of the form <code>(a -&gt; b) -&gt; MyRecord -&gt; MyRecord'</code> where <code>MyRecord'</code> is some morphed version of <code>MyRecord</code>. But also, the function <code>a -&gt; b</code> is specifically going to act on <code>Int</code>, <code>Bool</code>, and <code>Char</code> and turn them into whatever their new types are in <code>MyRecord'</code>. How do we even begin? One way to proceed is by using the idea of <a href="https://reasonablypolymorphic.com/blog/higher-kinded-data/">Higher-Kinded Data (HKD)</a> and rewriting our record like so:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">MyRecordHKD</span> f <span class="fu">=</span> <span class="dt">MyRecordHKD</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  {<span class="ot"> a ::</span> f <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-3" title="3">  ,<span class="ot"> b ::</span> f <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb2-4" title="4">  ,<span class="ot"> c ::</span> f <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  }</a></code></pre></div>
+<p>Aha! Now, we want a function of the type <code>map :: (forall a. f a -&gt; g a) -&gt; MyRecordHKD f -&gt; MyRecordHKD g</code>. Of course, this is still a little difficult to work with — what functions can we actually provide as the first argument to this map? I could write a simple function like</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="ot">toMaybe ::</span> <span class="dt">Identity</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a</a>
+<a class="sourceLine" id="cb3-2" title="2">toMaybe (<span class="dt">Identity</span> a) <span class="fu">=</span> <span class="dt">Just</span> a</a></code></pre></div>
+<p>and this will work! However, it doesn’t let me <em>do</em> anything with the data in <code>MyRecordHKD</code>. For instance, I cannot choose that some values will be <code>Nothing</code> while others will be <code>Just</code>. As another example of our current limitations, wouldn’t it be great if I could <code>show</code> all the values in my record, producing a new record where every field is a <code>String</code> (i.e. <code>MyRecordHKD (Const String)</code>)? This seems like it should be fine, but it requires that our passed in function have a constraint: it needs the type <code>forall a. Show a =&gt; f a -&gt; g a</code>. Of course, we could make a version of <code>map</code> like this, but it still feels lacking. This new map function would have the type:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> (<span class="kw">forall</span> a<span class="fu">.</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> g a) <span class="ot">-&gt;</span> <span class="dt">MyRecordHKD</span> f <span class="ot">-&gt;</span> <span class="dt">MyRecordHKD</span> g</a></code></pre></div>
+<p>From here, we can generalize no further. It would be great to generalize <code>Show</code> to an arbitrary constraint, but how can we express that we need a constraint that applies to <code>Int</code>, <code>Bool</code>, and <code>Char</code>? It would also be great if we could generalize to any HKD record, but how do we know that the fields of that record are all <code>Show</code>able? What we really want is a way to generically declare in our context that all fields of our record satisfy the constraint.</p>
+<h2 id="enter-row-types">Enter row-types</h2>
+<p>With row-types, we can define a type</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">type</span> <span class="dt">MyRow</span> <span class="fu">=</span> <span class="st">&quot;a&quot;</span> <span class="fu">.==</span> <span class="dt">Int</span> <span class="fu">.+</span> <span class="st">&quot;b&quot;</span> <span class="fu">.==</span> <span class="dt">Bool</span> <span class="fu">.+</span> <span class="st">&quot;c&quot;</span> <span class="fu">.==</span> <span class="dt">Char</span><span class="ot">`</span></a>
+<a class="sourceLine" id="cb5-2" title="2"><span class="ot">type MyRowRecord = Rec MyRow</span></a></code></pre></div>
+<p>This behaves just like the native version of <code>MyRecord</code> (in fact, you can use <code>fromNative</code> and <code>toNative</code> to simply convert values between the two representations), but since we’re using row-types, we’re open to a bit more flexibility. Specifically, we now have a mapping function at our disposal that does exactly what we want:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> <span class="kw">forall</span> c f r<span class="fu">.</span> <span class="dt">Forall</span> r c <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a)</a>
+<a class="sourceLine" id="cb6-2" title="2">    <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f r)</a></code></pre></div>
+<p>There are two notable differences between this <code>map</code> function and the one above:</p>
+<ol type="1">
+<li><p>We now have a requirement in the context of the form <code>Forall r c</code>. Intuitively, this means that the constraint <code>c</code> holds on all of the types in the row <code>r</code>.</p></li>
+<li><p>The output is a record over the row-type <code>Map f r</code>. The difference between <code>r</code> and <code>Map f r</code> is exactly the difference between <code>MyRecord</code> and <code>MyRecordHKD</code> — it simply wraps the type of each value within the row with the type function <code>f</code>.</p></li>
+</ol>
+<p>The <code>Forall</code> constraint is the key element that was missing without row-types, and with it, we can easily write a function that <code>show</code>s all the elements of <code>MyRowRecord</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="ot">showRecord ::</span> <span class="kw">forall</span> r<span class="fu">.</span> <span class="dt">Forall</span> r <span class="dt">Show</span> <span class="ot">=&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> (<span class="dt">Const</span> <span class="dt">String</span>) r)</a>
+<a class="sourceLine" id="cb7-2" title="2">showRecord <span class="fu">=</span> <span class="fu">map</span> <span class="fu">@</span><span class="dt">Show</span> <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">String</span>) <span class="fu">@</span>r <span class="fu">show</span></a></code></pre></div>
+<p>The big question remaining is: What is this <code>Forall</code>, and how does it work?</p>
+<h2 id="forall">Forall</h2>
+<p>The <code>Forall</code> type class is one of the key elements that gives the row-types library the power it has. It not only guarantees that each element of a row satisfies a given constraint, but it provides a function that allows one to make use of that fact. This function works conceptually in two phases: first, it breaks apart the row into its constituent elements, and then it sews the row back up. In this way, it acts first as a <a href="https://en.wikipedia.org/wiki/Catamorphism">catamorphism</a> (a fold) and then as an <a href="https://en.wikipedia.org/wiki/Anamorphism">anamorphism</a> (an unfold). When these two morphisms happen back to back like this, they are together called a <em>metamorphism</em>. The full definition of the <code>Forall</code> type class is:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">class</span> <span class="dt">Forall</span> (<span class="ot">r ::</span> <span class="dt">Row</span> k) (<span class="ot">c ::</span> k <span class="ot">-&gt;</span> <span class="dt">Constraint</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-2" title="2"><span class="ot">  metamorph ::</span> <span class="kw">forall</span> (<span class="ot">p ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">f ::</span> <span class="dt">Row</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">g ::</span> <span class="dt">Row</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">h ::</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-3" title="3">       <span class="dt">Bifunctor</span> p</a>
+<a class="sourceLine" id="cb8-4" title="4">    <span class="ot">=&gt;</span> <span class="dt">Proxy</span> (<span class="dt">Proxy</span> h, <span class="dt">Proxy</span> p)</a>
+<a class="sourceLine" id="cb8-5" title="5">    <span class="ot">-&gt;</span> (f <span class="dt">Empty</span> <span class="ot">-&gt;</span> g <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb8-6" title="6">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-7" title="7">        (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb8-8" title="8">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> f ρ <span class="ot">-&gt;</span> p (h τ) (f (ρ <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb8-9" title="9">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-10" title="10">        (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">FrontExtends</span> ℓ τ ρ, <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ ρ))</a>
+<a class="sourceLine" id="cb8-11" title="11">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> p (h τ) (g ρ) <span class="ot">-&gt;</span> g (<span class="dt">Extend</span> ℓ τ ρ))</a>
+<a class="sourceLine" id="cb8-12" title="12">    <span class="ot">-&gt;</span> f r</a>
+<a class="sourceLine" id="cb8-13" title="13">    <span class="ot">-&gt;</span> g r</a></code></pre></div>
+<p>This is an intimidating definition, but if we take a step back and look at the shape, we can see the components. The tail end of the function type is <code>f r -&gt; g r</code>; this is because <code>metamorph</code> will take some value over the row <code>r</code> and return a new value over that row. For instance, to use <code>metamorph</code> in our definition of <code>map</code>, we will take <code>f</code> as <code>Rec</code> and <code>g</code> as the composition of <code>Rec</code> and <code>Map f</code>, which we write</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" title="1"><span class="kw">newtype</span> <span class="dt">RMap</span> (<span class="ot">f ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (ρ<span class="ot"> ::</span> <span class="dt">Row</span> <span class="fu">*</span>) <span class="fu">=</span> <span class="dt">RMap</span> {<span class="ot"> unRMap ::</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f ρ) }</a></code></pre></div>
+<p>(It would be great if we could just write <code>Compose Rec (Map f)</code>, but <code>Map</code> is a type family and cannot be partially applied like that. <a href="https://github.com/ghc-proposals/ghc-proposals/pull/242">Maybe some day</a>.)</p>
+<p>The three prior arguments define a base case, the fold, and the unfold in that order. This may be a bit surprising or even confusing, so let’s fill in the types for <code>map</code> that we know, drop any constraints we don’t need, and see what those arguments look like (we’ll also fill in <code>(,)</code> for <code>p</code>, which is necessary when working with records, and <code>Identity</code> for <code>h</code>):</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1">  <span class="ot">-&gt;</span> (<span class="dt">Rec</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> <span class="dt">RMap</span> <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb10-2" title="2">  <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb10-3" title="3">     <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> <span class="dt">Rec</span> ρ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">Rec</span> (ρ <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb10-4" title="4">  <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ)</a>
+<a class="sourceLine" id="cb10-5" title="5">     <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">RMap</span> ρ) <span class="ot">-&gt;</span> <span class="dt">RMap</span> (<span class="dt">Extend</span> ℓ τ ρ))</a></code></pre></div>
+<p>If you squint, you see that the first argument is a function for how to convert an empty record from the input to the output — this is the base case. The second argument is a function that dictates how a record gets split apart into the “next” element (the <code>Identity τ</code>) and the rest of the record — this is the guts of the catamorphism, or how to disassemble the record. The final argument is a function for how to take a label, an element, and a partially built output record and extend the output record with that label — this is the heart of the anamorphism, or how to build up the record.</p>
+<p>Although there are some slight subtleties, it’s pretty straightforward to define these three functions for <code>map</code>. The base case simply returns <code>RMap empty</code>, the catamorphism function returns the pair of the value at <code>ℓ</code> with the record <code>r .- ℓ</code>, and the anamorphism function is an injection of the value into the record at the given label.<sup><a href="#myfootnote1">1</a></sup></p>
+<h2 id="metamorphism-and-further">Metamorphism and further</h2>
+<p>We can do much more with <code>metamorphism</code> than just a simple record <code>map</code> — the key is choosing the right types. For instance, let’s look again at the type <code>p</code>, the bifunctor that determines the structure of the output of the catamorphism and the input of the anamorphism. For records, we chose to use <code>(,)</code>, signifying that each type in the row gives rise to a value (<code>h τ</code>) and the rest of the row. However, if we choose <code>Either</code>, then each type in the row gives rise to <em>either</em> a value <em>or</em> the rest of the row. This is <em>exactly</em> what we need to metamorphize <em>variants</em>, and indeed, writing <code>map</code> for the <code>Var</code> type involves a call to <code>metamorph</code> with <code>p</code> as <code>Either</code>. The two other canonical bifunctors are <code>Const</code> and <code>FlipConst</code>; <code>Const</code> can be used in cases where we simply want an arbitrary entry in the row, and <code>FlipConst</code> is useful when we don’t care about the values in the row at all (<code>FlipConst</code> is used during <code>fromLabels</code>, where we generate a record/variant from a row-type that has no value yet).</p>
+<p>Alternatively, consider if we let <code>f</code> be <code>RMap f</code> and <code>g</code> be <code>Compose f Rec</code> for some applicative functor <code>f</code>. In this case, we’ll be converting a <code>Rec (Map f r)</code> to a <code>f (Rec r)</code> — in other words, we have a <code>sequence</code> over records.</p>
+<p>One unexpected power of <code>metamorph</code> is that it can act on <em>two records at once</em>. At first, this may seem crazy — it only has access to one row type — but if the two records share the same row type, then there’s really no problem. For instance, we can use <code>metamorph</code> to define an equality function over records. The input is a pair of records, so we will let <code>f</code> be <code>Product Rec Rec</code>, and the output is a Boolean, so we let <code>g</code> be <code>Const Bool</code>. From there, the rest of the type parameters fall into place, and the argument definitions fall right out of the types:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="ot">recordEq ::</span> <span class="kw">forall</span> r<span class="fu">.</span> <span class="dt">Forall</span> r <span class="dt">Eq</span> <span class="ot">=&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb11-2" title="2">recordEq x y <span class="fu">=</span> getConst <span class="fu">$</span> metamorph <span class="fu">@</span>_ <span class="fu">@</span>r <span class="fu">@</span><span class="dt">Eq</span> <span class="fu">@</span>(,) <span class="fu">@</span>(<span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span>) <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">Bool</span>) <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">Bool</span>)</a>
+<a class="sourceLine" id="cb11-3" title="3">  <span class="dt">Proxy</span> base cata ana (<span class="dt">Pair</span> x y)</a>
+<a class="sourceLine" id="cb11-4" title="4">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-5" title="5"><span class="ot">    base ::</span> <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> <span class="dt">Const</span> <span class="dt">Bool</span> <span class="dt">Empty</span></a>
+<a class="sourceLine" id="cb11-6" title="6">    base _ <span class="fu">=</span> <span class="dt">Const</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb11-7" title="7"><span class="ot">    cata ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, <span class="dt">Eq</span> τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb11-8" title="8">         <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> ρ <span class="ot">-&gt;</span> (<span class="dt">Const</span> <span class="dt">Bool</span> τ, <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> (ρ <span class="fu">.-</span> ℓ))</a>
+<a class="sourceLine" id="cb11-9" title="9">    cata l (<span class="dt">Pair</span> r1 r2) <span class="fu">=</span> (<span class="dt">Const</span> <span class="fu">$</span> a <span class="fu">==</span> b, <span class="dt">Pair</span> r1' r2')</a>
+<a class="sourceLine" id="cb11-10" title="10">      <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-11" title="11">        (a, r1') <span class="fu">=</span> (r1 <span class="fu">.!</span> l, r1 <span class="fu">.-</span> l)</a>
+<a class="sourceLine" id="cb11-12" title="12">        (b, r2') <span class="fu">=</span> (r2 <span class="fu">.!</span> l, r2 <span class="fu">.-</span> l)</a>
+<a class="sourceLine" id="cb11-13" title="13"><span class="ot">    ana ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, <span class="dt">Eq</span> τ)</a>
+<a class="sourceLine" id="cb11-14" title="14">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Const</span> <span class="dt">Bool</span> τ, <span class="dt">Const</span> <span class="dt">Bool</span> ρ) <span class="ot">-&gt;</span> <span class="dt">Const</span> <span class="dt">Bool</span> (<span class="dt">Extend</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb11-15" title="15">    ana _ (<span class="dt">Const</span> b, <span class="dt">Const</span> b') <span class="fu">=</span> <span class="dt">Const</span> <span class="fu">$</span> b <span class="fu">&amp;&amp;</span> b'</a></code></pre></div>
+<p>For the first argument, <code>base</code>, we have a pair of empty records, and we need a <code>Bool</code>. Since we’re conjoining the equality of each of the elements of the record, <code>Const True</code> is an appropriate base case. For the second argument, <code>cata</code>, we have a label and a pair of records, and we want to know if the values at this label are equal and we also want the rest of the records. This is easily accomplished with simple row-types operators. For the third argument, <code>ana</code>, we have a label, whether the values at this label are equal, and whether the values in the rest of the record are equal. This is as simple as conjoining the two truth values. Interestingly, <code>recordEq</code> is a great example of how simple <code>metamorph</code> really is at the value level; if you leave out the type, there is nothing particularly complex about the call.</p>
+<h3 id="double-the-metamorphism-double-the-fun">Double the Metamorphism, Double the Fun</h3>
+<p>I’ll conclude with this little teaser: there’s no reason we need to restrict ourselves to just one row-type. Things get even more fun when we introduce <code>BiForall</code>, a type class over two row types that includes the <code>biMetamorph</code> function:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">class</span> <span class="dt">BiForall</span> (<span class="ot">r1 ::</span> <span class="dt">Row</span> k1) (<span class="ot">r2 ::</span> <span class="dt">Row</span> k2) (<span class="ot">c ::</span> k1 <span class="ot">-&gt;</span> k2 <span class="ot">-&gt;</span> <span class="dt">Constraint</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb12-2" title="2"><span class="ot">  biMetamorph ::</span></a>
+<a class="sourceLine" id="cb12-3" title="3">    <span class="kw">forall</span> (<span class="ot">p ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">f ::</span> <span class="dt">Row</span> k1 <span class="ot">-&gt;</span> <span class="dt">Row</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">g ::</span> <span class="dt">Row</span> k1 <span class="ot">-&gt;</span> <span class="dt">Row</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>)</a>
+<a class="sourceLine" id="cb12-4" title="4">           (<span class="ot">h ::</span> k1 <span class="ot">-&gt;</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="fu">.</span> <span class="dt">Bifunctor</span> p</a>
+<a class="sourceLine" id="cb12-5" title="5">    <span class="ot">=&gt;</span> <span class="dt">Proxy</span> (<span class="dt">Proxy</span> h, <span class="dt">Proxy</span> p)</a>
+<a class="sourceLine" id="cb12-6" title="6">    <span class="ot">-&gt;</span> (f <span class="dt">Empty</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> g <span class="dt">Empty</span> <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb12-7" title="7">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ1 τ2 ρ1 ρ2<span class="fu">.</span></a>
+<a class="sourceLine" id="cb12-8" title="8">        (<span class="dt">KnownSymbol</span> ℓ, c τ1 τ2, <span class="dt">HasType</span> ℓ τ1 ρ1, <span class="dt">HasType</span> ℓ τ2 ρ2)</a>
+<a class="sourceLine" id="cb12-9" title="9">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> f ρ1 ρ2 <span class="ot">-&gt;</span> p (h τ1 τ2) (f (ρ1 <span class="fu">.-</span> ℓ) (ρ2 <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb12-10" title="10">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ1 τ2 ρ1 ρ2<span class="fu">.</span></a>
+<a class="sourceLine" id="cb12-11" title="11">        ( <span class="dt">KnownSymbol</span> ℓ, c τ1 τ2, <span class="dt">FrontExtends</span> ℓ τ1 ρ1, <span class="dt">FrontExtends</span> ℓ τ2 ρ2</a>
+<a class="sourceLine" id="cb12-12" title="12">        , <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ1 ρ1), <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ2 ρ2))</a>
+<a class="sourceLine" id="cb12-13" title="13">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> p (h τ1 τ2) (g ρ1 ρ2) <span class="ot">-&gt;</span> g (<span class="dt">Extend</span> ℓ τ1 ρ1) (<span class="dt">Extend</span> ℓ τ2 ρ2))</a>
+<a class="sourceLine" id="cb12-14" title="14">    <span class="ot">-&gt;</span> f r1 r2 <span class="ot">-&gt;</span> g r1 r2</a></code></pre></div>
+<p>The <code>biMetamorph</code> function is scary to look at, but functionally, it follows the very same patterns as <code>metamorph</code> only with a second row. Importantly, it allows us to add <em>zipping</em> mechanics over row-types with the same labels <em>but different types</em>. Without partially applied type families, <code>biMetamorph</code> becomes very tiresome to use, but it has potential, and I’m hopeful for its future.</p>
+<p><br></p>
+<hr />
+<h4 id="footnotes">Footnotes</h4>
+<p><a name="myfootnote1">1</a>: The full definition of <code>map</code> on records looks like this:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> <span class="kw">forall</span> c f r<span class="fu">.</span> <span class="dt">Forall</span> r c <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a)</a>
+<a class="sourceLine" id="cb13-2" title="2">    <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f r)</a>
+<a class="sourceLine" id="cb13-3" title="3"><span class="fu">map</span> f <span class="fu">=</span> unRMap <span class="fu">.</span> metamorph <span class="fu">@</span>_ <span class="fu">@</span>r <span class="fu">@</span>c <span class="fu">@</span>(,) <span class="fu">@</span><span class="dt">Rec</span> <span class="fu">@</span>(<span class="dt">RMap</span> f) <span class="fu">@</span><span class="dt">Identity</span> <span class="dt">Proxy</span> base cata ana</a>
+<a class="sourceLine" id="cb13-4" title="4">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb13-5" title="5">    base _ <span class="fu">=</span> <span class="dt">RMap</span> empty</a>
+<a class="sourceLine" id="cb13-6" title="6">    cata l r <span class="fu">=</span> (<span class="dt">Identity</span> <span class="fu">$</span> r <span class="fu">.!</span> l, lazyRemove l r)</a>
+<a class="sourceLine" id="cb13-7" title="7"><span class="ot">    ana ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ)</a>
+<a class="sourceLine" id="cb13-8" title="8">           <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">RMap</span> f ρ) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb13-9" title="9">    ana l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a>
+<a class="sourceLine" id="cb13-10" title="10">      \\ mapExtendSwap <span class="fu">@</span>ℓ <span class="fu">@</span>τ <span class="fu">@</span>ρ <span class="fu">@</span>f</a></code></pre></div>
+<p>It’s very close to the description that I gave above, but it uses <code>unsafeRemove</code> in <code>cata</code> and this mysterious <code>mapExtendSwap</code> in <code>ana</code>. The <code>unsafeRemove</code> function is simply a performance improvement, and in fact, replacing it with <code>r .- l</code> works perfectly well.</p>
+<p>So what’s the deal with <code>mapExtendSwap</code>? The problem that we run into is that we need to generate a record with row-type <code>Map f (Extend ℓ τ ρ))</code>. We have <code>r</code>, which is a record with row type <code>Map f ρ</code>, so we just <code>extend</code> that record with <code>f v</code> at label <code>l</code>, right? Not so fast. The type of <code>extend</code> is</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" title="1"><span class="ot">extend ::</span> <span class="kw">forall</span> t l r<span class="fu">.</span> <span class="dt">KnownSymbol</span> l <span class="ot">=&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> t <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Extend</span> l t r)</a></code></pre></div>
+<p>where the type family <code>Extend</code> does some ordering magic to make sure that labels are always in alphabetical order. So in order to call <code>extend</code>, we’ll need to prove that <code>Extend ℓ (f τ) (Map f ρ) ~ Map f (Extend ℓ τ ρ)</code>. This is where <code>mapExtendSwap</code> comes in. Its type is:<sup><a href="#myfootnote2">2</a></sup></p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" title="1"><span class="ot">mapExtendSwap ::</span> <span class="kw">forall</span> ℓ τ r f<span class="fu">.</span> <span class="dt">Dict</span>(<span class="dt">Extend</span> ℓ (f τ) (<span class="dt">Map</span> f r) <span class="fu">~</span> <span class="dt">Map</span> f (<span class="dt">Extend</span> ℓ τ r))</a></code></pre></div>
+<p>In other words, it’s free information at the type level that describes how <code>Extend</code> and <code>Map</code> relate and can be interchanged. To bring it into scope, we use the function <code>\\</code> from <code>Data.Constraint</code>.</p>
+<p><a name="myfootnote2">2</a>: I haven’t shown the implementation of <code>mapExtendSwap</code>, and that’s because there isn’t one. It’s just an <code>unsafeCoerce</code> on an unconstrained <code>Dict</code>. The result is always true, but I couldn’t find a way to convince GHC of this without cheating.</p>
+    </section>
+</article>
+
+    </main>
+
+    <footer>
+      <quote>
+        <blockquote data-animation-role="quote">
+          quotetext
+        </blockquote>
+        <figcaption class="source">&mdash; quoteattrib</figcaption>
+      </quote>
+      <p> Site generated by <a href="http://jaspervdj.be/hakyll">Hakyll</a>.
+    </footer>
+
+  <script>
+    var myQs = new Array();
+    myQs[0] = "Real stupidity beats artificial intelligence every time. -- Terry Pratchett";
+    myQs[1] = "He who wonders discovers that this in itself is wonder. -- M. C. Escher";
+    myQs[2] = "Simplicity is the ultimate sophistication. -- Leonardo da Vinci";
+    myQs[3] = "Time is like a drug. Too much of it kills you. -- Terry Pratchett";
+    myQs[4] = "When it came to getting weird things done, sane beat mad hands down. -- Terry Pratchett";
+    myQs[5] = "Students, eh? Love 'em or hate 'em, you're not allowed to hit 'em with a shovel. -- Terry Pratchett";
+    myQs[6] = "You get ideas from daydreaming. You get ideas from being bored. You get ideas all the time. -- Neil Gaiman";
+    myQs[7] = "I don't know half of you half as well as I should like; and I like less than half of you half as well as you deserve. -- Bilbo Baggins, from J.R.R Tolkien's Lord of the Rings";
+    myQs[8] = "Only the insane equate pain with success. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[9] = "Only a few find the way; some don't recognize it when they do; some don't ever want to. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[10] = "Always collect what's useful. Reject only your ignorance, and you may survive. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[11] = "Those who say there's nothing like a nice cup of tea for calming the nerves never had real tea. It's like a syringe of adrenaline straight to the heart! -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[12] = "My, Earth really is full of things -- King of All Cosmos, from Katamari Damacy";
+    myQs[13] = "The way I see it, if you're going to build a time machine into a car, why not do it with some style? -- Doc, from Back to the Future";
+    myQs[14] = "I know because I was there. -- Wadsworth, from Clue";
+    myQs[15] = "No meaning yes, or no meaning no? -- Colonel Mustard, from Clue";
+    myQs[16] = "I feel like I could... like I could... like I could... TAKE ON THE WORLD!! -- Purple Tentacle, from Day of the Tentacle";
+    myQs[17] = "You know what they say: \"If you want to save the world, you have to push a few old ladies down the stairs\". -- Bernard, from Day of the Tentacle";
+    myQs[18] = "Wait, I’ve got an idea, and it doesn’t require high explosives. -- Max, from Sam'n'Max Hit the Road";
+    myQs[19] = "You have this really convenient subspace highway running through your head that I like to use. It's, like, 3 miles in 15 seconds. -- Ramona, from Scott Pilgrim vs The World";
+    myQs[20] = "Do you think that's air you're breathing now?  Stop trying to hit me and hit me! -- Morpheus, from The Matrix";
+    myQs[21] = "Ray, when someone asks you if you're a god, you say \"Yes!\" -- Winston, from Ghostbusters";
+    myQs[22] = "So, Lone Starr, now you see that evil will always triumph, because good is dumb. -- Dark Helmet, from Spaceballs";
+    myQs[23] = "People assume that time is a strict progression of cause to effect, but actually — from a non-linear, non-subjective viewpoint — it's more like a big ball of wibbly-wobbly... timey-wimey... stuff. -- Doctor Who";
+    myQs[24] = "I must not fear. Fear is the mind-killer. Fear is the little-death that brings total obliteration. -- Paul Atreides, from Frank Herbert's Dune";
+    myQs[25] = "Science fiction writers foresee the inevitable, and although problems and catastrophes may be inevitable, solutions are not. -- Isaac Asimov";
+    myQs[26] = "To succeed, planning alone is insufficient. One must improvise as well. -- Isaac Asimov";
+    myQs[27] = "Remember - the enemy's gate is down. -- Ender, from Orson Scott Card's Ender's Game";
+    myQs[28] = "Space is big. Really big. You just won't believe how vastly, hugely, mindbogglingly big it is. I mean, you may think it's a long way down the road to the chemist's, but that's just peanuts to space. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[29] = "The chances of finding out what's really going on in the universe are so remote, the only thing to do is hang the sense of it and keep yourself occupied. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[30] = "Hey, you sass that hoopy Ford Prefect? There's a frood who really knows where his towel is. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[31] = "There's always money in the banana stand. -- George Bluth, from Arrested Development";
+    myQs[32] = "Introducing \"the double decker couch\", so everyone could watch TV together and be buddies! -- Emmet, from The Lego Movie";
+    myQs[33] = "Ah! Curse your sudden but inevitable betrayal! -- Wash, from Firefly";
+    myQs[34] = "Nothing can happen till you swing the bat. -- Haruko, from FLCL";
+    myQs[35] = "Dear God. What is it like in your funny little brains? It must be so boring. -- Sherlock";
+    myQs[36] = "You, [subject name here], must be the pride of [subject hometown here]! -- GLaDOS, from Portal";
+    myQs[37] = "Please note that we have added a consequence for failure. Any contact with the chamber floor will result in an \"unsatisfactory\" mark on your official testing record, followed by death. Good luck! -- GLaDOS, from Portal";
+    myQs[38] = "Did you know you can donate one or all of your vital organs to the Aperture Science Self-Esteem Fund for Girls? It's true! -- GLaDOS, from Portal";
+    myQs[39] = "You euthanized your faithful Companion Cube more quickly than any test subject on record. Congratulations. -- GLaDOS, from Portal";
+    myQs[40] = "Look at me still talking when there's Science to do -- GLaDOS, from Portal";
+    myQs[41] = "The Human Mind: 600 miles of synaptic fiber, five and a half ounces of cranial fluid, 1500 grams of complex neural matter... a three-pound pile of dreams. -- Raz, from Psychonauts";
+
+
+    var range = myQs.length;
+    var index;
+    var quote;
+    var res;
+    var attribution;
+    var bodyGrab;
+
+    function getQuote()
+    {
+      index = Math.floor(Math.random()*range);
+      quote = myQs[index];
+      res = quote.split(" -- ");
+      quote = res[0];
+      attribution = res[1];
+    }
+
+    var blocks = document.getElementsByTagName("blockquote");
+    var captions = document.getElementsByTagName("figcaption");
+    for (var i=0;i<blocks.length;i++)
+    {
+      getQuote();
+      bodyGrab = blocks[i].innerHTML;
+      bodyGrab = bodyGrab.replace("quotetext", quote);
+      blocks[i].innerHTML = bodyGrab;
+      bodyGrab = captions[i].innerHTML;
+      bodyGrab = bodyGrab.replace("quoteattrib", attribution);
+      captions[i].innerHTML = bodyGrab;
+    }
+  </script>
+  </body>
+</html>
