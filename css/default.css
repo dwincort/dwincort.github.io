@@ -1,3 +1,7 @@
+/* Basic fonts from https://fonts.google.com/?vfonly */
+@import url('https://fonts.googleapis.com/css2?family=Jost&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@700&family=Oswald:wght@300&display=swap');
+
 html {
   font-size: 62.5%;
   background-color: #090909;
@@ -5,10 +9,10 @@ html {
 
 body {
   /* font-family:Helvetica,Arial,sans-serif; */
-  font-family:Verdana,sans-serif;
+  font-family:'Jost',Verdana,sans-serif;
   letter-spacing:0.05rem;
   line-height:2.4rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   color: #c2c2c2;
 }
 
@@ -29,7 +33,7 @@ nav {
 nav a, nav a:link, nav a:visited {
   font-size: 1.6rem;
   color: #999;
-  letter-spacing:1px;
+  letter-spacing:2px;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -44,7 +48,7 @@ footer {
   margin-top: 3rem;
   padding: 1.2rem 0;
   border-top: 0.2rem solid #ddd;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   color: #444;
 }
 
@@ -56,28 +60,46 @@ quote {
 }
 
 h1 {
-  font-size: 2.4rem;
+  font-size: 3.2rem;
+  color: #eee;
 }
 
 h2 {
+  font-size: 2.6rem;
+  color: #eee;
+}
+
+h3 {
+  font-size: 2.2rem;
+  color: #eee;
+}
+
+h4 {
   font-size: 2rem;
+  color: #eee;
+  font-style: italic;
 }
 
 article .header {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-style: italic;
   color: #555;
 }
 
+.site-title {
+  text-align: center;
+}
+
 .site-title a {
-  font-family:Helvetica,Arial,sans-serif;
-  font-size: 4.4rem;
+  font-family:'Josefin Sans',Helvetica,Arial,sans-serif;
+  font-size: 4rem;
   line-height:5.2rem;
   letter-spacing:10px;
   font-weight: bold;
   color: #1fd2ff;
   text-decoration: none;
   text-transform: uppercase;
+  margin: 2rem auto 1rem;
 }
 
 .site-description {
@@ -93,7 +115,7 @@ article .header {
     padding: 0 5%;
   }
   header {
-    margin: 4.2rem 0;
+    margin: 2rem 0;
   }
   nav {
     margin: 0 auto 3rem;
@@ -102,8 +124,7 @@ article .header {
     text-align: center;
   }
   .site-title {
-    text-align: center;
-    margin: 1rem auto 3rem;
+    margin: 0 auto 1rem;
   }
   .site-title a {
     font-size: 2.4rem;
@@ -133,8 +154,6 @@ article .header {
     text-align: center;
   }
   .site-title {
-    text-align: center;
-    margin: 1rem auto 3rem;
   }
   .site-title a {
   }
@@ -165,12 +184,9 @@ article .header {
     text-align: right;
   }
   .site-title {
-    text-align: center;
-    margin: 1rem auto 3rem;
   }
   .site-title a {
     float: center;
-    font-size: 4.4rem;
   }
 }
 
@@ -262,14 +278,15 @@ overlayText {
   font-size: 120%;
   padding: 0px 100px;
   left: 0;
-  width: 44%;
+  width: 42%;
 }
 
 bigname {
   font-size: 3rem;
+  color: #000;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 650px) {
   .overlay {
     position: static;
     padding: 0px;

@@ -1,11 +1,13 @@
 <article>
     <section class="header">
+        $if(repost)$
+        Re-posted on $date$ (originally written $repost$)
+        $else$
         Posted on $date$
-        $if(author)$
-            by $author$
         $endif$
     </section>
     <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
         $body$
     </section>
 </article>

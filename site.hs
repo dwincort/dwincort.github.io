@@ -56,17 +56,16 @@ main = do
         >>= relativizeUrls
         >>= cleanIndexUrls
 
-    create ["archive.html"] $ do
+    match "posts.md" $ do
       route cleanRoute
       compile $ do
         posts <- recentFirst =<< loadAll "posts/*"
         let
           archiveCtx =
             listField "posts" postCtx (return posts) <>
-            constField "title" "Archives"            <>
             defaultContext'
 
-        makeItem ""
+        pandocCompiler
           >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
           >>= loadAndApplyTemplate "templates/default.html" archiveCtx
           >>= relativizeUrls
@@ -76,7 +75,7 @@ main = do
       route idRoute
       compile $ do
         posts <- recentFirst =<< loadAll "posts/*"
-        singlePages <- loadAll (topLevelPages .||. "research.md")
+        singlePages <- loadAll (topLevelPages .||. "research.md" .||. "posts.html")
         let pages = posts <> singlePages
             sitemapCtx =
               constField "root" root <>
