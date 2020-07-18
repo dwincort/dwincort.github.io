@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"
+    xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Dan Winograd-Cort's Posts</title>
+        <link>http://www.danwc.com</link>
+        <description><![CDATA[This feed is about topics I'm interested in]]></description>
+        <atom:link href="http://www.danwc.com/rss.xml" rel="self"
+                   type="application/rss+xml" />
+        <lastBuildDate>Sun, 14 Jun 2020 00:00:00 UT</lastBuildDate>
+        <item>
+    <title>2020-06-14-metamorph</title>
+    <link>https://danwc.com/posts/2020-06-14-metamorph/index.html</link>
+    <description><![CDATA[<article>
+    <section class="header">
+        
+        Posted on June 14, 2020
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
+        <h1 id="row-types-metamorphism">Row-Types Metamorphism</h1>
+<h2 id="heterogeneous-mapping">Heterogeneous Mapping</h2>
+<p>One of the very powerful features of row-types records is the ability to map over them. Mapping over a list or another functorial object is rather straightforward, but how does one map over a heterogeneous record? What would the type of such a function even be? To gain some insight into this question, we can start by considering what it might mean to map a function over a native Haskell record. Consider a record such as the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">data</span> <span class="dt">MyRecord</span> <span class="fu">=</span> <span class="dt">MyRecord</span></a>
+<a class="sourceLine" id="cb1-2" title="2">  {<span class="ot"> a ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb1-3" title="3">  ,<span class="ot"> b ::</span> <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb1-4" title="4">  ,<span class="ot"> c ::</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb1-5" title="5">  }</a></code></pre></div>
+<p>And we’re saying we want a function of the form <code>(a -&gt; b) -&gt; MyRecord -&gt; MyRecord'</code> where <code>MyRecord'</code> is some morphed version of <code>MyRecord</code>. But also, the function <code>a -&gt; b</code> is specifically going to act on <code>Int</code>, <code>Bool</code>, and <code>Char</code> and turn them into whatever their new types are in <code>MyRecord'</code>. How do we even begin? One way to proceed is by using the idea of <a href="https://reasonablypolymorphic.com/blog/higher-kinded-data/">Higher-Kinded Data (HKD)</a> and rewriting our record like so:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">MyRecordHKD</span> f <span class="fu">=</span> <span class="dt">MyRecordHKD</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  {<span class="ot"> a ::</span> f <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-3" title="3">  ,<span class="ot"> b ::</span> f <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb2-4" title="4">  ,<span class="ot"> c ::</span> f <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  }</a></code></pre></div>
+<p>Aha! Now, we want a function of the type <code>map :: (forall a. f a -&gt; g a) -&gt; MyRecordHKD f -&gt; MyRecordHKD g</code>. Of course, this is still a little difficult to work with — what functions can we actually provide as the first argument to this map? I could write a simple function like</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="ot">toMaybe ::</span> <span class="dt">Identity</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a</a>
+<a class="sourceLine" id="cb3-2" title="2">toMaybe (<span class="dt">Identity</span> a) <span class="fu">=</span> <span class="dt">Just</span> a</a></code></pre></div>
+<p>and this will work! However, it doesn’t let me <em>do</em> anything with the data in <code>MyRecordHKD</code>. For instance, I cannot choose that some values will be <code>Nothing</code> while others will be <code>Just</code>. As another example of our current limitations, wouldn’t it be great if I could <code>show</code> all the values in my record, producing a new record where every field is a <code>String</code> (i.e. <code>MyRecordHKD (Const String)</code>)? This seems like it should be fine, but it requires that our passed in function have a constraint: it needs the type <code>forall a. Show a =&gt; f a -&gt; g a</code>. Of course, we could make a version of <code>map</code> like this, but it still feels lacking. This new map function would have the type:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> (<span class="kw">forall</span> a<span class="fu">.</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> g a) <span class="ot">-&gt;</span> <span class="dt">MyRecordHKD</span> f <span class="ot">-&gt;</span> <span class="dt">MyRecordHKD</span> g</a></code></pre></div>
+<p>From here, we can generalize no further. It would be great to generalize <code>Show</code> to an arbitrary constraint, but how can we express that we need a constraint that applies to <code>Int</code>, <code>Bool</code>, and <code>Char</code>? It would also be great if we could generalize to any HKD record, but how do we know that the fields of that record are all <code>Show</code>able? What we really want is a way to generically declare in our context that all fields of our record satisfy the constraint.</p>
+<h2 id="enter-row-types">Enter row-types</h2>
+<p>With row-types, we can define a type</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">type</span> <span class="dt">MyRow</span> <span class="fu">=</span> <span class="st">&quot;a&quot;</span> <span class="fu">.==</span> <span class="dt">Int</span> <span class="fu">.+</span> <span class="st">&quot;b&quot;</span> <span class="fu">.==</span> <span class="dt">Bool</span> <span class="fu">.+</span> <span class="st">&quot;c&quot;</span> <span class="fu">.==</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb5-2" title="2"><span class="kw">type</span> <span class="dt">MyRowRecord</span> <span class="fu">=</span> <span class="dt">Rec</span> <span class="dt">MyRow</span></a></code></pre></div>
+<p>This behaves just like the native version of <code>MyRecord</code> (in fact, you can use <code>fromNative</code> and <code>toNative</code> to simply convert values between the two representations), but since we’re using row-types, we’re open to a bit more flexibility. Specifically, we now have a mapping function at our disposal that does exactly what we want:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> <span class="kw">forall</span> c f r<span class="fu">.</span> <span class="dt">Forall</span> r c <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a)</a>
+<a class="sourceLine" id="cb6-2" title="2">    <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f r)</a></code></pre></div>
+<p>There are two notable differences between this <code>map</code> function and the one above:</p>
+<ol type="1">
+<li><p>We now have a requirement in the context of the form <code>Forall r c</code>. Intuitively, this means that the constraint <code>c</code> holds on all of the types in the row <code>r</code>.</p></li>
+<li><p>The output is a record over the row-type <code>Map f r</code>. The difference between <code>r</code> and <code>Map f r</code> is exactly the difference between <code>MyRecord</code> and <code>MyRecordHKD</code> — it simply wraps the type of each value within the row with the type function <code>f</code>. The row-types library also comes with a function <code>transform</code> that converts from a <code>Rec (Map f r)</code> to <code>Rec (Map g r)</code> (where the provided function must have type <code>forall a. c a =&gt; f a -&gt; g a</code>).</p></li>
+</ol>
+<p>The <code>Forall</code> constraint is the key element that was missing without row-types, and with it, we can easily write a function that <code>show</code>s all the elements of <code>MyRowRecord</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="ot">showRecord ::</span> <span class="kw">forall</span> r<span class="fu">.</span> <span class="dt">Forall</span> r <span class="dt">Show</span> <span class="ot">=&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> (<span class="dt">Const</span> <span class="dt">String</span>) r)</a>
+<a class="sourceLine" id="cb7-2" title="2">showRecord <span class="fu">=</span> <span class="fu">map</span> <span class="fu">@</span><span class="dt">Show</span> <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">String</span>) <span class="fu">@</span>r <span class="fu">show</span></a></code></pre></div>
+<p>The big question remaining is: What is this <code>Forall</code>, and how does it work?</p>
+<h2 id="forall">Forall</h2>
+<p>The <code>Forall</code> type class is one of the key elements that gives the row-types library the power it has. It not only guarantees that each element of a row satisfies a given constraint, but it provides a function that allows one to make use of that fact. This function works conceptually in two phases: first, it breaks apart the row into its constituent elements, and then it sews the row back up. In this way, it acts first as a <a href="https://en.wikipedia.org/wiki/Catamorphism">catamorphism</a> (a fold) and then as an <a href="https://en.wikipedia.org/wiki/Anamorphism">anamorphism</a> (an unfold). When these two morphisms happen back-to-back like this, they are together called a <em>metamorphism</em>. The full definition of the <code>Forall</code> type class is:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">class</span> <span class="dt">Forall</span> (<span class="ot">r ::</span> <span class="dt">Row</span> k) (<span class="ot">c ::</span> k <span class="ot">-&gt;</span> <span class="dt">Constraint</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-2" title="2"><span class="ot">  metamorph ::</span> <span class="kw">forall</span> (<span class="ot">p ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">f ::</span> <span class="dt">Row</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">g ::</span> <span class="dt">Row</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">h ::</span> k <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-3" title="3">       <span class="dt">Bifunctor</span> p</a>
+<a class="sourceLine" id="cb8-4" title="4">    <span class="ot">=&gt;</span> <span class="dt">Proxy</span> (<span class="dt">Proxy</span> h, <span class="dt">Proxy</span> p)</a>
+<a class="sourceLine" id="cb8-5" title="5">    <span class="ot">-&gt;</span> (f <span class="dt">Empty</span> <span class="ot">-&gt;</span> g <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb8-6" title="6">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-7" title="7">        (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb8-8" title="8">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> f ρ <span class="ot">-&gt;</span> p (h τ) (f (ρ <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb8-9" title="9">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span></a>
+<a class="sourceLine" id="cb8-10" title="10">        (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">FrontExtends</span> ℓ τ ρ, <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ ρ))</a>
+<a class="sourceLine" id="cb8-11" title="11">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> p (h τ) (g ρ) <span class="ot">-&gt;</span> g (<span class="dt">Extend</span> ℓ τ ρ))</a>
+<a class="sourceLine" id="cb8-12" title="12">    <span class="ot">-&gt;</span> f r</a>
+<a class="sourceLine" id="cb8-13" title="13">    <span class="ot">-&gt;</span> g r</a></code></pre></div>
+<p>This is an intimidating definition, but if we take a step back and look at the shape, we can see the components. The tail end of the function type is <code>f r -&gt; g r</code>; this is because <code>metamorph</code> will take some value over the row <code>r</code> and return a new value over that row. For instance, to use <code>metamorph</code> in our definition of <code>map</code>, we will take <code>f</code> as <code>Rec</code> and <code>g</code> as the composition of <code>Rec</code> and <code>Map f</code>, which we write</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" title="1"><span class="kw">newtype</span> <span class="dt">RMap</span> (<span class="ot">f ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (ρ<span class="ot"> ::</span> <span class="dt">Row</span> <span class="fu">*</span>) <span class="fu">=</span> <span class="dt">RMap</span> {<span class="ot"> unRMap ::</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f ρ) }</a></code></pre></div>
+<p>(It would be great if we could just write <code>Compose Rec (Map f)</code>, but <code>Map</code> is a type family and cannot be partially applied like that. <a href="https://github.com/ghc-proposals/ghc-proposals/pull/242">Maybe some day</a>.)</p>
+<p>The three prior arguments define a base case, the fold, and the unfold in that order. This may be a bit surprising or even confusing, so let’s fill in the types for <code>map</code> that we know, drop any constraints we don’t need, and see what those arguments look like (we’ll also fill in <code>(,)</code> for <code>p</code>, which is necessary when working with records, and <code>Identity</code> for <code>h</code>):</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1">  <span class="ot">-&gt;</span> (<span class="dt">Rec</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> <span class="dt">RMap</span> f <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb10-2" title="2">  <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb10-3" title="3">     <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> <span class="dt">Rec</span> ρ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">Rec</span> (ρ <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb10-4" title="4">  <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ)</a>
+<a class="sourceLine" id="cb10-5" title="5">     <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">RMap</span> f ρ) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> ℓ τ ρ))</a></code></pre></div>
+<p>If you squint, you see that the first argument is a function for how to convert an empty record from the input to the output — this is the base case. The second argument is a function that dictates how a record gets split apart into the “next” element (the <code>Identity τ</code>) and the rest of the record — this is the guts of the catamorphism, or how to disassemble the record. The final argument is a function for how to take a label, an element, and a partially built output record and extend the output record with that label — this is the heart of the anamorphism, or how to build up the record.</p>
+<h3 id="metamorph-in-practice"><code>metamorph</code> in practice</h3>
+<p>Conceptually, it’s pretty straightforward to define the three above functions for <code>map</code>. The base case simply returns <code>RMap empty</code>, the catamorphism function returns the pair of the value at <code>ℓ</code> with the record <code>r .- ℓ</code>, and the anamorphism function is an injection of the value into the record at the given label. However, there are some slight subtleties that one must be aware of.</p>
+<p>First, let’s write a base case. This one really is easy:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="ot">base ::</span> <span class="dt">Rec</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> <span class="dt">RMap</span> f <span class="dt">Empty</span></a>
+<a class="sourceLine" id="cb11-2" title="2">base _ <span class="fu">=</span> <span class="dt">RMap</span> empty</a></code></pre></div>
+<p>Empty records are uninteresting, so we can ignore the input and simply make a new empty record as output.</p>
+<p>Next, the catamorphism; this one is also not too bad:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="ot">cata ::</span> (<span class="dt">KnownSymbol</span> l, <span class="dt">HasType</span> l t r)</a>
+<a class="sourceLine" id="cb12-2" title="2">     <span class="ot">=&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> (<span class="dt">Identity</span> t, <span class="dt">Rec</span> (r <span class="fu">.-</span> l))</a>
+<a class="sourceLine" id="cb12-3" title="3">cata l r <span class="fu">=</span> (<span class="dt">Identity</span> <span class="fu">$</span> r <span class="fu">.!</span> l, lazyRemove l r)</a></code></pre></div>
+<p>Technically, we can add <code>c t</code> to the context, where <code>c</code> is whatever constraint we’re given in <code>Forall r c</code>, but we don’t actually need that information to write <code>cata</code>, so we omit it here. Also note that the use of <code>lazyRemove</code> instead of the standard <code>.-</code> operator is simply a performance improvement and is not critical to the semantic behavior of the function.</p>
+<p>The anamorphism component is the tricky one. Let’s start with an obvious attempt:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="ot">ana ::</span> <span class="kw">forall</span> c f l t r<span class="fu">.</span> (<span class="dt">KnownSymbol</span> l, c t)</a>
+<a class="sourceLine" id="cb13-2" title="2">    <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a) <span class="ot">-&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> (<span class="dt">Identity</span> t, <span class="dt">RMap</span> f r) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> l t r)</a>
+<a class="sourceLine" id="cb13-3" title="3">ana f l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a></code></pre></div>
+<p>Given the value <code>v</code> and the record “so far”, we produce the record extended with <code>f v</code>. However, this doesn’t work. If we try this, GHC gives us the following type error:</p>
+<pre><code>Could not deduce: Extend l (f t) (Map f r) ~ Map f (Extend l t r)</code></pre>
+<p>On the face of it, this is understandable. Recall that the type of <code>extend</code> is:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" title="1"><span class="ot">extend ::</span> <span class="kw">forall</span> t l r<span class="fu">.</span> <span class="dt">KnownSymbol</span> l <span class="ot">=&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> t <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Extend</span> l t r)</a></code></pre></div>
+<p>and <code>Extend</code> is a type family that does some ordering magic to make sure that labels are always in alphabetical order. This means that we’re producing a value with row-type <code>Extend l (f t) (Map f r)</code>, but the <code>RMap</code> constructor requires a row-type like <code>Map f (Extend l t r)</code>.</p>
+<p>But, on closer inspection, this begins to feel absurd. When it comes to the ordering magic, the <code>Extend</code> type family only cares about the label of the type it’s inserting into the row-type and not the type itself, and since we’re inserting <code>l</code> in both instances, these really <em>should</em> be the same. Unfortunately, GHC simply cannot deduce this.</p>
+<p>Luckily, we have an escape hatch. The row-types library comes with a <code>Data.Row.Dictionaries</code> module full of axioms specifically designed to overcome deduction hurdles like these. For our purposes, we can import <code>mapExtendSwap</code>, which has the type:<sup><a href="#myfootnote2">2</a></sup></p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1"><span class="ot">mapExtendSwap ::</span> <span class="kw">forall</span> l t r f<span class="fu">.</span> <span class="dt">Dict</span> (<span class="dt">Extend</span> l (f t) (<span class="dt">Map</span> f r) ≈ <span class="dt">Map</span> f (<span class="dt">Extend</span> l t r))</a></code></pre></div>
+<p>This value is a proof that the <code>Map</code> type family preserves labels and their ordering. To use it, we simply provide the correct type arguments to instantiate it at the type we want and then use the <code>\\</code> operator (also exported by <code>Data.Row.Dictionaries</code> but originally from <code>Data.Constraint</code>) to provide the information to the type checker. The correct definition of <code>ana</code> looks like this:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" title="1"><span class="ot">ana ::</span> <span class="kw">forall</span> c f l t r<span class="fu">.</span> (<span class="dt">KnownSymbol</span> l, c t)</a>
+<a class="sourceLine" id="cb17-2" title="2">    <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a) <span class="ot">-&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> (<span class="dt">Identity</span> t, <span class="dt">RMap</span> f r) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> l t r)</a>
+<a class="sourceLine" id="cb17-3" title="3">ana f l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a>
+<a class="sourceLine" id="cb17-4" title="4">  \\ mapExtendSwap <span class="fu">@</span>l <span class="fu">@</span>t <span class="fu">@</span>r <span class="fu">@</span>f</a></code></pre></div>
+<p>With this complete, we can write a full definition of <code>map</code>, here putting <code>base</code>, <code>cata</code>, and <code>ana</code> in the <code>where</code> clause:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> <span class="kw">forall</span> c f r<span class="fu">.</span> <span class="dt">Forall</span> r c <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a)</a>
+<a class="sourceLine" id="cb18-2" title="2">    <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f r)</a>
+<a class="sourceLine" id="cb18-3" title="3"><span class="fu">map</span> f <span class="fu">=</span> unRMap <span class="fu">.</span> metamorph <span class="fu">@</span>_ <span class="fu">@</span>r <span class="fu">@</span>c <span class="fu">@</span>(,) <span class="fu">@</span><span class="dt">Rec</span> <span class="fu">@</span>(<span class="dt">RMap</span> f) <span class="fu">@</span><span class="dt">Identity</span> <span class="dt">Proxy</span> base cata ana</a>
+<a class="sourceLine" id="cb18-4" title="4">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb18-5" title="5">    base _ <span class="fu">=</span> <span class="dt">RMap</span> empty</a>
+<a class="sourceLine" id="cb18-6" title="6">    cata l r <span class="fu">=</span> (<span class="dt">Identity</span> <span class="fu">$</span> r <span class="fu">.!</span> l, lazyRemove l r)</a>
+<a class="sourceLine" id="cb18-7" title="7"><span class="ot">    ana ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ)</a>
+<a class="sourceLine" id="cb18-8" title="8">           <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">RMap</span> f ρ) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb18-9" title="9">    ana l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a>
+<a class="sourceLine" id="cb18-10" title="10">      \\ mapExtendSwap <span class="fu">@</span>ℓ <span class="fu">@</span>τ <span class="fu">@</span>ρ <span class="fu">@</span>f</a></code></pre></div>
+<p>The <code>Data.Row.Dictionaries</code> module contains a good set of axioms, but it’s definitely not a complete set. Indeed, if you define your own custom type families like <code>Map</code>, you may need to define new axioms for it in order to use <code>metamorph</code> effectively.</p>
+<h2 id="metamorphism-and-further">Metamorphism and further</h2>
+<p>We can do much more with <code>metamorphism</code> than just a simple record <code>map</code> — the key is choosing the right types. For instance, let’s look again at the type <code>p</code>, the bifunctor that determines the structure of the output of the catamorphism and the input of the anamorphism. For records, we chose to use <code>(,)</code>, signifying that each type in the row gives rise to a value (<code>h τ</code>) and the rest of the row. However, if we choose <code>Either</code>, then each type in the row gives rise to <em>either</em> a value <em>or</em> the rest of the row. This is <em>exactly</em> what we need to metamorphize <em>variants</em>, and indeed, writing <code>map</code> for the <code>Var</code> type involves a call to <code>metamorph</code> with <code>p</code> as <code>Either</code>. The two other canonical bifunctors are <code>Const</code> and <code>FlipConst</code>; <code>Const</code> can be used in cases where we simply want an arbitrary entry in the row, and <code>FlipConst</code> is useful when we don’t care about the values in the row at all (<code>FlipConst</code> is used during <code>fromLabels</code>, where we generate a record/variant from a row-type that has no value yet).</p>
+<p>Alternatively, consider if we let <code>f</code> be <code>RMap f</code> and <code>g</code> be <code>Compose f Rec</code> for some applicative functor <code>f</code>. In this case, we’ll be converting a <code>Rec (Map f r)</code> to a <code>f (Rec r)</code> — in other words, we have a <code>sequence</code> over records.</p>
+<p>One unexpected power of <code>metamorph</code> is that it can act on <em>two records at once</em>. At first, this may seem crazy — it only has access to one row type — but if the two records share the same row type, then there’s really no problem. For instance, we can use <code>metamorph</code> to define an equality function over records. The input is a pair of records, so we will let <code>f</code> be <code>Product Rec Rec</code>, and the output is a Boolean, so we let <code>g</code> be <code>Const Bool</code>. From there, the rest of the type parameters fall into place, and the argument definitions fall right out of the types:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb19-1" title="1"><span class="ot">recordEq ::</span> <span class="kw">forall</span> r<span class="fu">.</span> <span class="dt">Forall</span> r <span class="dt">Eq</span> <span class="ot">=&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb19-2" title="2">recordEq x y <span class="fu">=</span> getConst <span class="fu">$</span> metamorph <span class="fu">@</span>_ <span class="fu">@</span>r <span class="fu">@</span><span class="dt">Eq</span> <span class="fu">@</span>(,) <span class="fu">@</span>(<span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span>) <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">Bool</span>) <span class="fu">@</span>(<span class="dt">Const</span> <span class="dt">Bool</span>)</a>
+<a class="sourceLine" id="cb19-3" title="3">  <span class="dt">Proxy</span> base cata ana (<span class="dt">Pair</span> x y)</a>
+<a class="sourceLine" id="cb19-4" title="4">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb19-5" title="5"><span class="ot">    base ::</span> <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> <span class="dt">Const</span> <span class="dt">Bool</span> <span class="dt">Empty</span></a>
+<a class="sourceLine" id="cb19-6" title="6">    base _ <span class="fu">=</span> <span class="dt">Const</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb19-7" title="7"><span class="ot">    cata ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, <span class="dt">Eq</span> τ, <span class="dt">HasType</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb19-8" title="8">         <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> ρ <span class="ot">-&gt;</span> (<span class="dt">Const</span> <span class="dt">Bool</span> τ, <span class="dt">Product</span> <span class="dt">Rec</span> <span class="dt">Rec</span> (ρ <span class="fu">.-</span> ℓ))</a>
+<a class="sourceLine" id="cb19-9" title="9">    cata l (<span class="dt">Pair</span> r1 r2) <span class="fu">=</span> (<span class="dt">Const</span> <span class="fu">$</span> a <span class="fu">==</span> b, <span class="dt">Pair</span> r1&#39; r2&#39;)</a>
+<a class="sourceLine" id="cb19-10" title="10">      <span class="kw">where</span></a>
+<a class="sourceLine" id="cb19-11" title="11">        (a, r1&#39;) <span class="fu">=</span> (r1 <span class="fu">.!</span> l, r1 <span class="fu">.-</span> l)</a>
+<a class="sourceLine" id="cb19-12" title="12">        (b, r2&#39;) <span class="fu">=</span> (r2 <span class="fu">.!</span> l, r2 <span class="fu">.-</span> l)</a>
+<a class="sourceLine" id="cb19-13" title="13"><span class="ot">    ana ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, <span class="dt">Eq</span> τ)</a>
+<a class="sourceLine" id="cb19-14" title="14">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Const</span> <span class="dt">Bool</span> τ, <span class="dt">Const</span> <span class="dt">Bool</span> ρ) <span class="ot">-&gt;</span> <span class="dt">Const</span> <span class="dt">Bool</span> (<span class="dt">Extend</span> ℓ τ ρ)</a>
+<a class="sourceLine" id="cb19-15" title="15">    ana _ (<span class="dt">Const</span> b, <span class="dt">Const</span> b&#39;) <span class="fu">=</span> <span class="dt">Const</span> <span class="fu">$</span> b <span class="fu">&amp;&amp;</span> b&#39;</a></code></pre></div>
+<p>For the first argument, <code>base</code>, we have a pair of empty records, and we need a <code>Bool</code>. Since we’re conjoining the equality of each of the elements of the record, <code>Const True</code> is an appropriate base case. For the second argument, <code>cata</code>, we have a label and a pair of records, and we want to know if the values at this label are equal and we also want the rest of the records. This is easily accomplished with simple row-types operators. For the third argument, <code>ana</code>, we have a label, whether the values at this label are equal, and whether the values in the rest of the record are equal. This is as simple as conjoining the two truth values. Interestingly, <code>recordEq</code> is a great example of how simple <code>metamorph</code> really is at the value level; if you leave out the type, there is nothing particularly complex about the call.</p>
+<h3 id="double-the-metamorphism-double-the-fun">Double the Metamorphism, Double the Fun</h3>
+<p>I’ll conclude with this little teaser: there’s no reason we need to restrict ourselves to just one row-type. Things get even more fun when we introduce <code>BiForall</code>, a type class over two row types that includes the <code>biMetamorph</code> function:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" title="1"><span class="kw">class</span> <span class="dt">BiForall</span> (<span class="ot">r1 ::</span> <span class="dt">Row</span> k1) (<span class="ot">r2 ::</span> <span class="dt">Row</span> k2) (<span class="ot">c ::</span> k1 <span class="ot">-&gt;</span> k2 <span class="ot">-&gt;</span> <span class="dt">Constraint</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb20-2" title="2"><span class="ot">  biMetamorph ::</span></a>
+<a class="sourceLine" id="cb20-3" title="3">    <span class="kw">forall</span> (<span class="ot">p ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">f ::</span> <span class="dt">Row</span> k1 <span class="ot">-&gt;</span> <span class="dt">Row</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>) (<span class="ot">g ::</span> <span class="dt">Row</span> k1 <span class="ot">-&gt;</span> <span class="dt">Row</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>)</a>
+<a class="sourceLine" id="cb20-4" title="4">           (<span class="ot">h ::</span> k1 <span class="ot">-&gt;</span> k2 <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="fu">.</span> <span class="dt">Bifunctor</span> p</a>
+<a class="sourceLine" id="cb20-5" title="5">    <span class="ot">=&gt;</span> <span class="dt">Proxy</span> (<span class="dt">Proxy</span> h, <span class="dt">Proxy</span> p)</a>
+<a class="sourceLine" id="cb20-6" title="6">    <span class="ot">-&gt;</span> (f <span class="dt">Empty</span> <span class="dt">Empty</span> <span class="ot">-&gt;</span> g <span class="dt">Empty</span> <span class="dt">Empty</span>)</a>
+<a class="sourceLine" id="cb20-7" title="7">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ1 τ2 ρ1 ρ2<span class="fu">.</span></a>
+<a class="sourceLine" id="cb20-8" title="8">        (<span class="dt">KnownSymbol</span> ℓ, c τ1 τ2, <span class="dt">HasType</span> ℓ τ1 ρ1, <span class="dt">HasType</span> ℓ τ2 ρ2)</a>
+<a class="sourceLine" id="cb20-9" title="9">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> f ρ1 ρ2 <span class="ot">-&gt;</span> p (h τ1 τ2) (f (ρ1 <span class="fu">.-</span> ℓ) (ρ2 <span class="fu">.-</span> ℓ)))</a>
+<a class="sourceLine" id="cb20-10" title="10">    <span class="ot">-&gt;</span> (<span class="kw">forall</span> ℓ τ1 τ2 ρ1 ρ2<span class="fu">.</span></a>
+<a class="sourceLine" id="cb20-11" title="11">        ( <span class="dt">KnownSymbol</span> ℓ, c τ1 τ2, <span class="dt">FrontExtends</span> ℓ τ1 ρ1, <span class="dt">FrontExtends</span> ℓ τ2 ρ2</a>
+<a class="sourceLine" id="cb20-12" title="12">        , <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ1 ρ1), <span class="dt">AllUniqueLabels</span> (<span class="dt">Extend</span> ℓ τ2 ρ2))</a>
+<a class="sourceLine" id="cb20-13" title="13">        <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> p (h τ1 τ2) (g ρ1 ρ2) <span class="ot">-&gt;</span> g (<span class="dt">Extend</span> ℓ τ1 ρ1) (<span class="dt">Extend</span> ℓ τ2 ρ2))</a>
+<a class="sourceLine" id="cb20-14" title="14">    <span class="ot">-&gt;</span> f r1 r2 <span class="ot">-&gt;</span> g r1 r2</a></code></pre></div>
+<p>The <code>biMetamorph</code> function is scary to look at, but functionally, it follows the very same patterns as <code>metamorph</code> only with a second row. Importantly, it allows us to add <em>zipping</em> mechanics over row-types with the same labels <em>but different types</em>. For instance, <code>row-types</code> has a <code>switch</code> function that uses <code>biMetamorph</code>. The <code>switch</code> function takes a variant along with a Record of functions from each possible value of the variant to a single output type, and then applies the correct function to the value in the variant.</p>
+<p><br></p>
+<hr />
+<h4 id="footnotes">Footnotes</h4>
+<p><a name="myfootnote2">2</a>: I haven’t shown the implementation of <code>mapExtendSwap</code>, and that’s because there isn’t one. It’s just an <code>unsafeCoerce</code> on an unconstrained <code>Dict</code>. The result is always true, but I couldn’t find a way to convince GHC of this without cheating.</p>
+    </section>
+</article>
+]]></description>
+    <pubDate>Sun, 14 Jun 2020 00:00:00 UT</pubDate>
+    <guid>https://danwc.com/posts/2020-06-14-metamorph/index.html</guid>
+    <dc:creator>Daniel Winograd-Cort</dc:creator>
+</item>
+<item>
+    <title>2020-06-01-row-types-for-csv-library</title>
+    <link>https://danwc.com/posts/2020-06-01-row-types-for-csv-library/index.html</link>
+    <description><![CDATA[<article>
+    <section class="header">
+        
+        Re-posted on June  1, 2020 (originally written July 23, 2019)
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
+        <h1 id="row-types-for-csv-library">Row types for CSV library</h1>
+<p>Oleg Grenrus wrote a recent post titled <a href="http://oleg.fi/gists/posts/2019-07-15-fancy-types-for-cassava.html">“Fancy types for CSV library”</a>. In it, he shows how to use vectors and other <em>fancy types</em> to make CSV encoding and decoding more type safe (as compared to <code>cassava</code>). It’s a clever idea that uses an ordered vector of encoded fields (with length at the type level) as an intermediate data type. Thus, for encoding, one encodes their chosen data types into these vectors and then encodes the vectors into csv text. For decoding, one decodes the csv text into vectors and then decodes those vectors into the data types. Some trouble arises during decoding—perhaps the order of values in the csv input is different from the order in the data type, or perhaps there are missing fields in the csv input—and Oleg describes some nice tricks to deal with these problems.</p>
+<p>At the end of the article, Oleg writes:</p>
+<blockquote>
+<p>One valid question to ask, is whether row-types would simplify something here. Not really.</p>
+<p>For example vinyl’s Rec type is essentially the same as NP. Even if there were anonymous records in Haskell, so toRecord could be implemented directly using a built-in function, it would remove only a single problem from many. At it’s not much, as toRecord is generically derivable.</p>
+</blockquote>
+<p>I disagree with this conclusion, and in this post, I’ll show how simple the whole process of csv encoding and decoding can be with the row-types library. In fact, not only is the code short and clear, but it has even more type safety than Oleg’s version.</p>
+<h2 id="example">Example</h2>
+<details class="code-details">
+<p><summary>Extensions and imports for this Literate Haskell file</summary></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="ot">{-# LANGUAGE OverloadedLabels #-}</span></a>
+<a class="sourceLine" id="cb1-2" title="2"><span class="ot">{-# LANGUAGE DeriveAnyClass #-}</span></a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="ot">{-# LANGUAGE PartialTypeSignatures #-}</span></a>
+<a class="sourceLine" id="cb1-5" title="5"><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></a>
+<a class="sourceLine" id="cb1-6" title="6"><span class="kw">module</span> <span class="dt">RowCSV</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-7" title="7"></a>
+<a class="sourceLine" id="cb1-8" title="8"><span class="kw">import</span> <span class="dt">GHC.Generics</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb1-9" title="9"></a>
+<a class="sourceLine" id="cb1-10" title="10"><span class="kw">import</span> <span class="dt">Data.Text</span> (<span class="dt">Text</span>)</a>
+<a class="sourceLine" id="cb1-11" title="11"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text</span>    <span class="kw">as</span> <span class="dt">T</span></a>
+<a class="sourceLine" id="cb1-12" title="12"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text.IO</span> <span class="kw">as</span> <span class="dt">T</span></a>
+<a class="sourceLine" id="cb1-13" title="13"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.List</span>    <span class="kw">as</span> <span class="dt">L</span></a>
+<a class="sourceLine" id="cb1-14" title="14"><span class="kw">import</span> <span class="dt">Text.Read</span> (readMaybe)</a>
+<a class="sourceLine" id="cb1-15" title="15"></a>
+<a class="sourceLine" id="cb1-16" title="16"><span class="kw">import</span> <span class="dt">Data.Row</span></a>
+<a class="sourceLine" id="cb1-17" title="17"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Row.Records</span> <span class="kw">as</span> <span class="dt">Rec</span></a></code></pre></div>
+</details>
+<p>I’ll start with the same data that Oleg uses:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">PL</span> <span class="fu">=</span> <span class="dt">PL</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  {<span class="ot"> name   ::</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb2-3" title="3">  ,<span class="ot"> year   ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-4" title="4">  ,<span class="ot"> person ::</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  } <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Ord</span>, <span class="dt">Show</span>, <span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb2-6" title="6"></a>
+<a class="sourceLine" id="cb2-7" title="7"><span class="ot">pls ::</span> [<span class="dt">PL</span>]</a>
+<a class="sourceLine" id="cb2-8" title="8">pls <span class="fu">=</span></a>
+<a class="sourceLine" id="cb2-9" title="9">    [ <span class="dt">PL</span> <span class="st">&quot;Haskell&quot;</span> <span class="dv">1990</span> <span class="st">&quot;Simon&quot;</span></a>
+<a class="sourceLine" id="cb2-10" title="10">    , <span class="dt">PL</span> <span class="st">&quot;Scala&quot;</span>   <span class="dv">2004</span> <span class="st">&quot;Martin&quot;</span></a>
+<a class="sourceLine" id="cb2-11" title="11">    , <span class="dt">PL</span> <span class="st">&quot;Idris&quot;</span>   <span class="dv">2009</span> <span class="st">&quot;Edwin&quot;</span></a>
+<a class="sourceLine" id="cb2-12" title="12">    , <span class="dt">PL</span> <span class="st">&quot;Perl&quot;</span>    <span class="dv">1987</span> <span class="st">&quot;Larry&quot;</span></a>
+<a class="sourceLine" id="cb2-13" title="13">    ]</a>
+<a class="sourceLine" id="cb2-14" title="14"></a>
+<a class="sourceLine" id="cb2-15" title="15"><span class="ot">input ::</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb2-16" title="16">input <span class="fu">=</span> T.unlines</a>
+<a class="sourceLine" id="cb2-17" title="17">    [ <span class="st">&quot;year,name,types,person,website&quot;</span></a>
+<a class="sourceLine" id="cb2-18" title="18">    , <span class="st">&quot;1987,Perl,no,Larry&quot;</span></a>
+<a class="sourceLine" id="cb2-19" title="19">    , <span class="st">&quot;1990,Haskell,nice,Simon,https://www.haskell.org/&quot;</span></a>
+<a class="sourceLine" id="cb2-20" title="20">    , <span class="st">&quot;2004,Scala,weird,Martin,https://www.scala-lang.org/&quot;</span></a>
+<a class="sourceLine" id="cb2-21" title="21">    , <span class="st">&quot;2009,Idris,fancy,Edwin,https://www.idris-lang.org/&quot;</span></a>
+<a class="sourceLine" id="cb2-22" title="22">    ]</a></code></pre></div>
+<p>Here we have a simple record of programming language information. We have a list of a few languages, and we also have a sample CSV input. Note that the CSV input has extra fields, and it even has a missing website fields for one of the entries. We will see that since the <code>PL</code> type doesn’t have a <code>website</code> field, it won’t matter that the CSV data is missing that field.</p>
+<h2 id="encoding-to-csv">Encoding to CSV</h2>
+<p>I’m going to follow Oleg’s plan pretty closely, but instead of using vectors of <code>Text</code> as the intermediate value, I’ll be using an extensible row-types record.<br />
+It’s very easy to convert the <code>PL</code> type into an row-types record: use the built-in <code>fromNative</code>. For instance:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="fu">*</span><span class="dt">Main</span><span class="fu">&gt;</span> <span class="fu">:</span>t Rec.fromNative <span class="fu">&lt;$&gt;</span> pls</a>
+<a class="sourceLine" id="cb3-2" title="2">Rec.fromNative <span class="fu">&lt;$&gt;</span> pls</a>
+<a class="sourceLine" id="cb3-3" title="3"><span class="ot">  ::</span> [<span class="dt">Rec</span> (<span class="st">&quot;name&quot;</span> <span class="fu">.==</span> <span class="dt">Text</span> <span class="fu">.+</span> <span class="st">&quot;person&quot;</span> <span class="fu">.==</span> <span class="dt">Text</span> <span class="fu">.+</span> <span class="st">&quot;year&quot;</span> <span class="fu">.==</span> <span class="dt">Int</span>)]</a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="fu">*</span><span class="dt">Main</span><span class="fu">&gt;</span> Rec.fromNative <span class="fu">&lt;$&gt;</span> pls</a>
+<a class="sourceLine" id="cb3-5" title="5">[<span class="fu">#</span>name <span class="fu">.==</span> <span class="st">&quot;Haskell&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>person <span class="fu">.==</span> <span class="st">&quot;Simon&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>year <span class="fu">.==</span> <span class="dv">1990</span></a>
+<a class="sourceLine" id="cb3-6" title="6">,<span class="fu">#</span>name <span class="fu">.==</span> <span class="st">&quot;Scala&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>person <span class="fu">.==</span> <span class="st">&quot;Martin&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>year <span class="fu">.==</span> <span class="dv">2004</span></a>
+<a class="sourceLine" id="cb3-7" title="7">,<span class="fu">#</span>name <span class="fu">.==</span> <span class="st">&quot;Idris&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>person <span class="fu">.==</span> <span class="st">&quot;Edwin&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>year <span class="fu">.==</span> <span class="dv">2009</span></a>
+<a class="sourceLine" id="cb3-8" title="8">,<span class="fu">#</span>name <span class="fu">.==</span> <span class="st">&quot;Perl&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>person <span class="fu">.==</span> <span class="st">&quot;Larry&quot;</span> <span class="fu">.+</span> <span class="fu">#</span>year <span class="fu">.==</span> <span class="dv">1987</span>]</a></code></pre></div>
+<p>The ordering in row-types comes down to lexicographical ordering by field name, which is why it’s different here than in <code>PL</code>, but it’s not something we need to worry about because row-types are automatically normalized.</p>
+<p>For the individual fields, let’s use the same <code>ToField</code> class that Oleg uses:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">class</span>    <span class="dt">ToField</span> a    <span class="kw">where</span><span class="ot"> toField ::</span> a <span class="ot">-&gt;</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb4-2" title="2"><span class="kw">instance</span> <span class="dt">ToField</span> <span class="dt">Text</span> <span class="kw">where</span> toField <span class="fu">=</span> <span class="fu">id</span></a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="kw">instance</span> <span class="dt">ToField</span> <span class="dt">Int</span>  <span class="kw">where</span> toField <span class="fu">=</span> T.pack <span class="fu">.</span> <span class="fu">show</span></a></code></pre></div>
+<p>And now, because we’re using row-types as our intermediate data type, we are ready to produce CSV data:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="ot">recToCSV ::</span> <span class="kw">forall</span> ρ<span class="fu">.</span> <span class="dt">Forall</span> ρ <span class="dt">ToField</span> <span class="ot">=&gt;</span> [<span class="dt">Rec</span> ρ] <span class="ot">-&gt;</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb5-2" title="2">recToCSV rs <span class="fu">=</span> T.unlines <span class="fu">$</span> <span class="fu">map</span> (T.intercalate <span class="st">&quot;,&quot;</span>)</a>
+<a class="sourceLine" id="cb5-3" title="3">  <span class="fu">$</span> Rec.labels <span class="fu">@</span>ρ <span class="fu">@</span><span class="dt">ToField</span></a>
+<a class="sourceLine" id="cb5-4" title="4">  <span class="fu">:</span> <span class="fu">map</span> (Rec.erase <span class="fu">@</span><span class="dt">ToField</span> toField) rs</a></code></pre></div>
+<p>Let’s walk through this line by line. The first line is the type signature, where we demand that each field of the row-type <code>ρ</code> have a <code>ToField</code> instance. The second line should look pretty familiar: we stick commas between fields and turn a list of <code>Text</code>s into a <code>Text</code>. In the third line, we create the CSV header; the function <code>labels</code> returns the field names of a row type, and it only needs type arguments to work. The last line is where the individual records are encoded. The <code>erase</code> function is applied to each record in the input list; <code>erase</code> erases the field name information and maps the given function over the values, returning a simple list of results.</p>
+<p>Lastly, we can make a general <code>toCSV</code> function by composing <code>fromNative</code> and <code>recToCSV</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="ot">toCSV ::</span> <span class="kw">forall</span> ρ t<span class="fu">.</span> (<span class="dt">Rec.FromNative</span> t, <span class="dt">Rec.NativeRow</span> t ≈ ρ, <span class="dt">Forall</span> ρ <span class="dt">ToField</span>) <span class="ot">=&gt;</span> [t] <span class="ot">-&gt;</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb6-2" title="2">toCSV <span class="fu">=</span> recToCSV <span class="fu">@</span>ρ <span class="fu">.</span> <span class="fu">fmap</span> Rec.fromNative</a></code></pre></div>
+<p>We can do a sanity check with:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="fu">*</span><span class="dt">Main</span><span class="fu">&gt;</span> T.putStr <span class="fu">$</span> toCSV pls</a>
+<a class="sourceLine" id="cb7-2" title="2">name,year,person</a>
+<a class="sourceLine" id="cb7-3" title="3"><span class="dt">Haskell</span>,<span class="dv">1990</span>,<span class="dt">Simon</span></a>
+<a class="sourceLine" id="cb7-4" title="4"><span class="dt">Scala</span>,<span class="dv">2004</span>,<span class="dt">Martin</span></a>
+<a class="sourceLine" id="cb7-5" title="5"><span class="dt">Idris</span>,<span class="dv">2009</span>,<span class="dt">Edwin</span></a>
+<a class="sourceLine" id="cb7-6" title="6"><span class="dt">Perl</span>,<span class="dv">1987</span>,<span class="dt">Larry</span></a></code></pre></div>
+<h2 id="decoding-from-csv">Decoding from CSV</h2>
+<p>Once again, we’ll use the same field conversion functions as Oleg:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">class</span>    <span class="dt">FromField</span> a    <span class="kw">where</span><span class="ot"> fromField ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> a</a>
+<a class="sourceLine" id="cb8-2" title="2"><span class="kw">instance</span> <span class="dt">FromField</span> <span class="dt">Text</span> <span class="kw">where</span> fromField <span class="fu">=</span> <span class="dt">Right</span></a>
+<a class="sourceLine" id="cb8-3" title="3"><span class="kw">instance</span> <span class="dt">FromField</span> <span class="dt">Int</span>  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-4" title="4">  fromField t <span class="fu">=</span></a>
+<a class="sourceLine" id="cb8-5" title="5">    <span class="fu">maybe</span> (<span class="dt">Left</span> <span class="fu">$</span> <span class="st">&quot;Invalid Int: &quot;</span> <span class="fu">++</span> <span class="fu">show</span> t) <span class="dt">Right</span> <span class="fu">$</span> readMaybe <span class="fu">$</span> T.unpack t</a></code></pre></div>
+<p>And with just this class, we’re immediately ready to parse the csv data:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" title="1"><span class="ot">recFromCSV ::</span> <span class="kw">forall</span> ρ<span class="fu">.</span> (<span class="dt">AllUniqueLabels</span> ρ, <span class="dt">Forall</span> ρ <span class="dt">FromField</span>) <span class="ot">=&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Rec</span> ρ]</a>
+<a class="sourceLine" id="cb9-2" title="2">recFromCSV s <span class="fu">=</span> <span class="kw">case</span> <span class="fu">map</span> (T.splitOn <span class="st">&quot;,&quot;</span>) (T.lines s) <span class="kw">of</span></a>
+<a class="sourceLine" id="cb9-3" title="3">  [] <span class="ot">-&gt;</span> <span class="dt">Left</span> <span class="st">&quot;No Input&quot;</span></a>
+<a class="sourceLine" id="cb9-4" title="4">  header<span class="fu">:</span>vals <span class="ot">-&gt;</span> <span class="fu">traverse</span> makeRecord vals</a>
+<a class="sourceLine" id="cb9-5" title="5">    <span class="kw">where</span></a>
+<a class="sourceLine" id="cb9-6" title="6">      makeRecord s <span class="fu">=</span> Rec.fromLabelsA <span class="fu">@</span><span class="dt">FromField</span> <span class="fu">@</span>(<span class="dt">Either</span> <span class="dt">String</span>) <span class="fu">@</span>ρ (makeField s)</a>
+<a class="sourceLine" id="cb9-7" title="7"><span class="ot">      makeField ::</span> (<span class="dt">KnownSymbol</span> l, <span class="dt">FromField</span> a) <span class="ot">=&gt;</span> [<span class="dt">Text</span>] <span class="ot">-&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> a</a>
+<a class="sourceLine" id="cb9-8" title="8">      makeField val l <span class="fu">=</span></a>
+<a class="sourceLine" id="cb9-9" title="9">        <span class="fu">maybe</span> (<span class="dt">Left</span> <span class="fu">$</span> <span class="st">&quot;Missing field &quot;</span> <span class="fu">++</span> <span class="fu">show</span> l) fromField <span class="fu">$</span></a>
+<a class="sourceLine" id="cb9-10" title="10">          L.lookup (T.pack <span class="fu">$</span> <span class="fu">show</span> l) (<span class="fu">zip</span> header val)</a></code></pre></div>
+<p>Let’s walk through this one line by line too. In the type signature, we’re demanding that the extensible record that we’re parsing have unique labels for every field—it wouldn’t make sense to have two different fields with the same name—and that each field has a <code>FromField</code> instance. The second line is just dealing with commas and lines, and the third line is dealing with bad input. On the fourth line, we separate the header from the rest of the lines. We then <code>traverse</code> each of the lines with the inner function <code>makeRecord</code>. The sixth line defines <code>makeRecord</code>, which uses the <code>fromLabelsA</code> (<code>A</code> for Applicative) function to construct a row-type record based on its field names. This in turn uses the <code>makeField</code> function, which takes the csv line and the label and returns either a <code>Left</code> error message if parsing fails or a <code>Right</code> value if it succeeds. Parsing is simply looking up the field name (<code>T.pack $ show l</code>) in the line and calling <code>fromField</code> on it.</p>
+<p>Of course, we could probably do something smarter here than doing a lookup in a linked list—using a <code>Map</code> comes to mind—but we’re going for simplicity over efficiency for now.</p>
+<p>Lastly, we can convert a value of type <code>Rec ρ</code> to a native Haskell data type with the row-types built-in <code>toNative</code>. This lets us write a general <code>fromCSV</code> function:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="ot">fromCSV ::</span> <span class="kw">forall</span> t ρ<span class="fu">.</span></a>
+<a class="sourceLine" id="cb10-2" title="2">  (<span class="dt">Rec.ToNative</span> t, ρ ≈ <span class="dt">Rec.NativeRow</span> t, <span class="dt">AllUniqueLabels</span> ρ, <span class="dt">Forall</span> ρ <span class="dt">FromField</span>)</a>
+<a class="sourceLine" id="cb10-3" title="3">  <span class="ot">=&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> [t]</a>
+<a class="sourceLine" id="cb10-4" title="4">fromCSV <span class="fu">=</span> <span class="fu">fmap</span> (<span class="fu">fmap</span> Rec.toNative) <span class="fu">.</span> recFromCSV <span class="fu">@</span>ρ</a></code></pre></div>
+<p>We can do a sanity check with:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb11-2" title="2">main <span class="fu">=</span> <span class="kw">case</span> fromCSV <span class="fu">@</span><span class="dt">PL</span> input <span class="kw">of</span></a>
+<a class="sourceLine" id="cb11-3" title="3">  <span class="dt">Left</span> err <span class="ot">-&gt;</span> <span class="fu">putStrLn</span> <span class="fu">$</span> <span class="st">&quot;ERROR: &quot;</span> <span class="fu">++</span> err</a>
+<a class="sourceLine" id="cb11-4" title="4">  <span class="dt">Right</span> xs <span class="ot">-&gt;</span> <span class="fu">mapM_</span> <span class="fu">print</span> xs</a>
+<a class="sourceLine" id="cb11-5" title="5"></a>
+<a class="sourceLine" id="cb11-6" title="6"><span class="fu">*</span><span class="dt">Main</span><span class="fu">&gt;</span> main</a>
+<a class="sourceLine" id="cb11-7" title="7"><span class="dt">PL</span> {name <span class="fu">=</span> <span class="st">&quot;Perl&quot;</span>, year <span class="fu">=</span> <span class="dv">1987</span>, person <span class="fu">=</span> <span class="st">&quot;Larry&quot;</span>}</a>
+<a class="sourceLine" id="cb11-8" title="8"><span class="dt">PL</span> {name <span class="fu">=</span> <span class="st">&quot;Haskell&quot;</span>, year <span class="fu">=</span> <span class="dv">1990</span>, person <span class="fu">=</span> <span class="st">&quot;Simon&quot;</span>}</a>
+<a class="sourceLine" id="cb11-9" title="9"><span class="dt">PL</span> {name <span class="fu">=</span> <span class="st">&quot;Scala&quot;</span>, year <span class="fu">=</span> <span class="dv">2004</span>, person <span class="fu">=</span> <span class="st">&quot;Martin&quot;</span>}</a>
+<a class="sourceLine" id="cb11-10" title="10"><span class="dt">PL</span> {name <span class="fu">=</span> <span class="st">&quot;Idris&quot;</span>, year <span class="fu">=</span> <span class="dv">2009</span>, person <span class="fu">=</span> <span class="st">&quot;Edwin&quot;</span>}</a></code></pre></div>
+<h2 id="the-difficult-part">The Difficult Part</h2>
+<p>There isn’t one! Notice that our first implementation of <code>recFromCSV</code> was perfectly able to handle data with missing fields and reordered columns, and it didn’t require any extra work on our part.</p>
+<h2 id="conclusions-and-extensions">Conclusions and Extensions</h2>
+<p>Oleg claims that row-types would not simplify anything in CSV encoding and decoding, but I must disagree. Not only did the row-types library give us free <code>fromNative</code> and <code>toNative</code> functions and heterogeneous type safety, but it handled all of the difficult cases of missing data and reordered columns for free as well.</p>
+<p>Furthermore, if one thinks of the row-type record as an intermediate data type as described in the introduction, then we can extend this CSV parsing to incorporate the ideas of <a href="TypeSurgery.html">type surgery</a> as well. Instead of needing a <code>FromField</code> class, one could very simply lift the <code>Text</code> from the CSV into structured row-types records and then do surgery on them from there.</p>
+    </section>
+</article>
+]]></description>
+    <pubDate>Mon, 01 Jun 2020 00:00:00 UT</pubDate>
+    <guid>https://danwc.com/posts/2020-06-01-row-types-for-csv-library/index.html</guid>
+    <dc:creator>Daniel Winograd-Cort</dc:creator>
+</item>
+<item>
+    <title>2020-06-01-TypedErrors</title>
+    <link>https://danwc.com/posts/2020-06-01-TypedErrors/index.html</link>
+    <description><![CDATA[<article>
+    <section class="header">
+        
+        Re-posted on June  1, 2020 (originally written April 8, 2019)
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
+        <h1 id="typed-errors">Typed Errors</h1>
+<p>I read a post by Matt Parsons called <a href="https://www.parsonsmatt.org/2018/11/03/trouble_with_typed_errors.html">The Trouble with Typed Errors</a> that talks about the difficulties we face in Haskell from not having open variant types. Matt says:</p>
+<blockquote>
+<p>Haskell doesn’t have open variants, and the attempts to mock them end up quite clumsy to use in practice.</p>
+</blockquote>
+<p>But, I disagree. I think row-types handles the typed error case quite nicely.</p>
+<h2 id="imports">Imports</h2>
+<p>As this is a Literate Haskell file, let’s get the imports and pragmas out of the way first…</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="ot">{-# LANGUAGE AllowAmbiguousTypes #-}</span></a>
+<a class="sourceLine" id="cb1-2" title="2"><span class="ot">{-# LANGUAGE DataKinds #-}</span></a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="ot">{-# LANGUAGE OverloadedLabels #-}</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="ot">{-# LANGUAGE ScopedTypeVariables #-}</span></a>
+<a class="sourceLine" id="cb1-5" title="5"><span class="ot">{-# LANGUAGE TypeOperators #-}</span></a>
+<a class="sourceLine" id="cb1-6" title="6"><span class="kw">module</span> <span class="dt">TypedErrors</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-7" title="7"></a>
+<a class="sourceLine" id="cb1-8" title="8"><span class="kw">import</span> <span class="dt">Data.Row</span></a></code></pre></div>
+<h2 id="example">Example</h2>
+<p>I’ll try to set up the situation similar to how Matt sets it up in his blog. Let’s start with two functions, <code>foo</code> and <code>bar</code>, that may each fail.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">FooErr</span> <span class="fu">=</span> <span class="dt">FooErr</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  <span class="kw">deriving</span> (<span class="dt">Show</span>)</a>
+<a class="sourceLine" id="cb2-3" title="3"></a>
+<a class="sourceLine" id="cb2-4" title="4"><span class="kw">data</span> <span class="dt">BarErr</span> <span class="fu">=</span> <span class="dt">BarErr</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  <span class="kw">deriving</span> (<span class="dt">Show</span>)</a>
+<a class="sourceLine" id="cb2-6" title="6"></a>
+<a class="sourceLine" id="cb2-7" title="7"><span class="ot">foo ::</span> <span class="dt">Either</span> <span class="dt">FooErr</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-8" title="8">foo <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">FooErr</span> <span class="dv">3</span>)</a>
+<a class="sourceLine" id="cb2-9" title="9"></a>
+<a class="sourceLine" id="cb2-10" title="10"><span class="ot">bar ::</span> <span class="dt">Either</span> <span class="dt">BarErr</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-11" title="11">bar <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">BarErr</span> <span class="st">&quot;Oops&quot;</span>)</a></code></pre></div>
+<p>Of course, the problem with this code is that there’s no good way to deal with these two errors together. Matt explains in his blog the various problems, but in short:</p>
+<ul>
+<li><p>As is, <code>foo</code> and <code>bar</code> aren’t in the same monad (because they have different error types!), so we cannot use do notation.</p></li>
+<li><p>If we group the errors into something like <code>Either FooErr BarErr</code>, then not only must we be very diligent about <code>Left</code>s and <code>Right</code>s (especially if we add more error types), but we run into issues because <code>Either FooErr BarErr</code> ≠ <code>Either BarErr FooErr</code>.</p></li>
+<li><p>If we combine the errors into one monolithic error type, we lose static guarantees about exactly which errors a function may produce and exactly which we are handling when we write error handlers.</p></li>
+</ul>
+<h2 id="a-row-types-solution">A row-types solution</h2>
+<h3 id="generating-errors">Generating Errors</h3>
+<p>With row-types, we have open variants easily available to us, which means we can do the following:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="ot">foo ::</span> (<span class="dt">AllUniqueLabels</span> r, r <span class="fu">.!</span> <span class="st">&quot;fooErr&quot;</span> ≈ <span class="dt">Int</span>)    <span class="ot">=&gt;</span> <span class="dt">Either</span> (<span class="dt">Var</span> r) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-2" title="2">foo <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">IsJust</span> <span class="fu">#</span>fooErr <span class="dv">3</span>)</a>
+<a class="sourceLine" id="cb3-3" title="3"></a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="ot">bar ::</span> (<span class="dt">AllUniqueLabels</span> r, r <span class="fu">.!</span> <span class="st">&quot;barErr&quot;</span> ≈ <span class="dt">String</span>) <span class="ot">=&gt;</span> <span class="dt">Either</span> (<span class="dt">Var</span> r) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-5" title="5">bar <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">IsJust</span> <span class="fu">#</span>barErr <span class="st">&quot;Oops&quot;</span>)</a>
+<a class="sourceLine" id="cb3-6" title="6"></a>
+<a class="sourceLine" id="cb3-7" title="7"><span class="ot">baz ::</span> (<span class="dt">AllUniqueLabels</span> r, r <span class="fu">.!</span> <span class="st">&quot;bazErr&quot;</span> ≈ <span class="dt">Bool</span>)   <span class="ot">=&gt;</span> <span class="dt">Either</span> (<span class="dt">Var</span> r) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-8" title="8">baz <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">IsJust</span> <span class="fu">#</span>bazErr <span class="dt">True</span>)</a>
+<a class="sourceLine" id="cb3-9" title="9"></a>
+<a class="sourceLine" id="cb3-10" title="10"></a>
+<a class="sourceLine" id="cb3-11" title="11">foobarbaz</a>
+<a class="sourceLine" id="cb3-12" title="12"><span class="ot">  ::</span> ( <span class="dt">AllUniqueLabels</span> r</a>
+<a class="sourceLine" id="cb3-13" title="13">     , r <span class="fu">.!</span> <span class="st">&quot;fooErr&quot;</span> ≈ <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-14" title="14">     , r <span class="fu">.!</span> <span class="st">&quot;barErr&quot;</span> ≈ <span class="dt">String</span></a>
+<a class="sourceLine" id="cb3-15" title="15">     , r <span class="fu">.!</span> <span class="st">&quot;bazErr&quot;</span> ≈ <span class="dt">Bool</span>)</a>
+<a class="sourceLine" id="cb3-16" title="16">  <span class="ot">=&gt;</span> <span class="dt">Either</span> (<span class="dt">Var</span> r) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-17" title="17">foobarbaz <span class="fu">=</span> bar <span class="fu">*&gt;</span> foo <span class="fu">*&gt;</span> bar <span class="fu">*&gt;</span> baz</a></code></pre></div>
+<p>In <code>foo</code>, we create error data with the expression <code>IsJust #fooErr 3</code>. This creates a new row-types variant at the label <code>"fooErr"</code> with the value <code>3</code>. The context indicates that the error type may have other possibilities: specifically, <code>AllUniqueLabels r</code> is some boilerplate that guarantees that no two possibilities have the same name, and <code>r .! "fooErr" ≈ Int</code> declares that the <code>fooErr</code> possibility has a payload of type <code>Int</code>.</p>
+<p>We can do the same for <code>bar</code>/<code>barErr</code> and <code>baz</code>/<code>bazErr</code>, and then if we want to compose them together, we can easily do so as in <code>foobarbaz</code>. Furthermore, although we provide the type signatures here, GHC will infer them just fine (with <code>NoMonomorphismRestriction</code>).</p>
+<h3 id="handling-errors">Handling Errors</h3>
+<p>We can handle these errors in multiple ways.</p>
+<p>First off, it’s easy enough to <code>show</code> our value (so long as the data in the errors is <code>Show</code>able):</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="ot">printFoobarbaz ::</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb4-2" title="2">printFoobarbaz <span class="fu">=</span> <span class="fu">show</span> specificFoobarbaz</a>
+<a class="sourceLine" id="cb4-3" title="3">  <span class="kw">where</span><span class="ot"> specificFoobarbaz ::</span> <span class="dt">Either</span> (<span class="dt">Var</span> (<span class="st">&quot;fooErr&quot;</span> <span class="fu">.==</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb4-4" title="4">                                       <span class="fu">.+</span> <span class="st">&quot;barErr&quot;</span> <span class="fu">.==</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb4-5" title="5">                                       <span class="fu">.+</span> <span class="st">&quot;bazErr&quot;</span> <span class="fu">.==</span> <span class="dt">Bool</span>)) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb4-6" title="6">        specificFoobarbaz <span class="fu">=</span> foobarbaz</a></code></pre></div>
+<p>All row-types variants implement an obvious <code>Show</code> instance, but do note that to <code>show</code> <code>foobarbaz</code>, we must specify its type. This is because <code>foobarbaz</code> is defined polymorphically over any variant that has appropriate entries for <code>fooErr</code>, <code>barErr</code>, and <code>bazErr</code>, but to <code>show</code> it, we must pick a concrete type to use for the <code>Show</code> instance. In this case, we pick the minimum variant.</p>
+<p>We can also deal with a single error at a time using the <code>trial</code> function. This function lets us pluck a particular possibility out of a variant, allowing us to handle that possibility or be left with the leftovers of the variant. In the following case, we handle the <code>fooErr</code> possibility, using the <code>Int</code> value it contains as our return value. If <code>foobarbaz</code> is not a <code>fooErr</code>, then we’re left with a <code>Left</code> error value that cannot be a <code>fooErr</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="ot">handleFoo ::</span> <span class="kw">forall</span> r<span class="fu">.</span></a>
+<a class="sourceLine" id="cb5-2" title="2">  ( <span class="dt">AllUniqueLabels</span> r</a>
+<a class="sourceLine" id="cb5-3" title="3">  , r <span class="fu">.!</span> <span class="st">&quot;fooErr&quot;</span> ≈ <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb5-4" title="4">  , r <span class="fu">.!</span> <span class="st">&quot;barErr&quot;</span> ≈ <span class="dt">String</span></a>
+<a class="sourceLine" id="cb5-5" title="5">  , r <span class="fu">.!</span> <span class="st">&quot;bazErr&quot;</span> ≈ <span class="dt">Bool</span>)</a>
+<a class="sourceLine" id="cb5-6" title="6">  <span class="ot">=&gt;</span> <span class="dt">Either</span> (<span class="dt">Var</span> (r <span class="fu">.-</span> <span class="st">&quot;fooErr&quot;</span>)) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb5-7" title="7">handleFoo <span class="fu">=</span></a>
+<a class="sourceLine" id="cb5-8" title="8">  <span class="kw">case</span> foobarbaz <span class="kw">of</span></a>
+<a class="sourceLine" id="cb5-9" title="9">    <span class="dt">Left</span> err  <span class="ot">-&gt;</span> <span class="kw">case</span> trial <span class="fu">@</span>_ <span class="fu">@</span>r err <span class="fu">#</span>fooErr <span class="kw">of</span></a>
+<a class="sourceLine" id="cb5-10" title="10">      <span class="dt">Left</span>  i     <span class="ot">-&gt;</span> <span class="dt">Right</span> i</a>
+<a class="sourceLine" id="cb5-11" title="11">      <span class="dt">Right</span> other <span class="ot">-&gt;</span> <span class="dt">Left</span> other</a>
+<a class="sourceLine" id="cb5-12" title="12">    <span class="dt">Right</span> i   <span class="ot">-&gt;</span> <span class="dt">Right</span> i</a></code></pre></div>
+<p>The type signature of <code>handleFoo</code> is a little disappointing but necessary because we’re keeping our variant type entirely polymorphic. However, if we were willing to monomorphize our error to a concrete type, the constraints (and the type applications on <code>trial</code>) would no longer be necessary. This is a tradeoff that one needs to make based on the situation.</p>
+<p>Finally, we have the option of handling all errors at once using <code>switch</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="ot">handleAll ::</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb6-2" title="2">handleAll <span class="fu">=</span></a>
+<a class="sourceLine" id="cb6-3" title="3">  <span class="kw">case</span> foobarbaz <span class="kw">of</span></a>
+<a class="sourceLine" id="cb6-4" title="4">    <span class="dt">Left</span> err <span class="ot">-&gt;</span> switch err <span class="fu">$</span></a>
+<a class="sourceLine" id="cb6-5" title="5">         <span class="fu">#</span>fooErr <span class="fu">.==</span> (\n <span class="ot">-&gt;</span> <span class="st">&quot;FooErr of &quot;</span> <span class="fu">++</span> <span class="fu">show</span> n)</a>
+<a class="sourceLine" id="cb6-6" title="6">      <span class="fu">.+</span> <span class="fu">#</span>barErr <span class="fu">.==</span> (\s <span class="ot">-&gt;</span> <span class="st">&quot;BarErr of &quot;</span> <span class="fu">++</span> s)</a>
+<a class="sourceLine" id="cb6-7" title="7">      <span class="fu">.+</span> <span class="fu">#</span>bazErr <span class="fu">.==</span> (\b <span class="ot">-&gt;</span> <span class="st">&quot;BazErr of &quot;</span> <span class="fu">++</span> <span class="fu">show</span> b)</a>
+<a class="sourceLine" id="cb6-8" title="8">    <span class="dt">Right</span> i  <span class="ot">-&gt;</span> <span class="st">&quot;Got the result &quot;</span> <span class="fu">&lt;&gt;</span> <span class="fu">show</span> i</a></code></pre></div>
+<p>Specifically, <code>switch</code> allows us to define a case for every possibility of a variant, allowing us to reduce the variant to an ordinary result. In this case, type annotations are not needed because the variant must match exactly the form of the <code>switch</code>’s cases. Because we have exactly 3 cases, one for each of our errors, GHC monomorphizes the error component of <code>foobarbaz</code> to <code>Var ("fooErr" .== Int .+ "barErr" .== String .+ "bazErr" .== Bool)</code> automatically.</p>
+<h2 id="achievements-and-limitations">Achievements and Limitations</h2>
+<p>Using variants, we are able to create and handle typed errors without dealing with weird nesting of <code>Either</code>s and without losing any static guarantees. Furthermore, variant typed errors can be easily defined with constraints (as we did here with the constraints like <code>r .! "fooErr" ≈ Int</code>) with minimal boilerplate: no extra data declarations necessary! And, once monomorphized, two variants with the same possibilities always share the same type, regardless of the order that the possibilities are described in the type. I also didn’t discuss <code>diversify</code>, which allows one to expand the possibilities in a variant, which, for typed errors, allows one to use a limited (perhaps already monomorphized) error type in a more general setting.</p>
+<p>However, there are downsides to variants typed errors. A little bit of boilerplate does remain in the form of the <code>AllUniqueLabels</code> constraint, which just about always needs to be used. Also, GHC has trouble inferring all the types and constraints when we want to remain as polymorphic as possible, which means writing out some annoying types and occasionally using type annotations (as seen in <code>handleFoo</code> above). Lastly, the <code>switch</code> expression seems a lot like an ordinary Haskell <code>case</code> expression, but it isn’t, which means the user is forced to learn what amounts to a special syntax just for dispatching the errors.</p>
+<p>There are specific considerations for any project, but I think row-types variants are a great choice for typed errors.</p>
+    </section>
+</article>
+]]></description>
+    <pubDate>Mon, 01 Jun 2020 00:00:00 UT</pubDate>
+    <guid>https://danwc.com/posts/2020-06-01-TypedErrors/index.html</guid>
+    <dc:creator>Daniel Winograd-Cort</dc:creator>
+</item>
+<item>
+    <title>2020-06-01-TypeSurgery</title>
+    <link>https://danwc.com/posts/2020-06-01-TypeSurgery/index.html</link>
+    <description><![CDATA[<article>
+    <section class="header">
+        
+        Re-posted on June  1, 2020 (originally written April 8, 2019)
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
+        <h1 id="type-surgery">Type Surgery</h1>
+<p>I read about the idea of “data type surgery” on <a href="https://blog.poisson.chat/posts/2018-11-26-type-surgery.html">Lysxia’s blog post of the same name</a>. I’ll quote from the blog:</p>
+<blockquote>
+<p>The general motivation is to improve the applicability of various generic definitions, such as aeson’s generic instances for <code>ToJSON</code> and <code>FromJSON</code>. Such a library often offers several options to customize the generic implementations, but it can still happen that none of them quite fit your external requirements and you have to resort to manual implementations, even with only small mismatches with the generic implementations. Surgeries are a new way to adapt generic implementations to such conditions outside of your control.</p>
+</blockquote>
+<p>As it turns out, one can gain the same powers from the row-types package (something Lysxia hinted at in a footnote in the original blog). Today, I’m going to demonstrate how to use row-types to do type surgery.</p>
+<h2 id="example">Example</h2>
+<details class="code-details">
+<p><summary>Extensions and imports for this Literate Haskell file</summary></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="ot">{-# LANGUAGE AllowAmbiguousTypes #-}</span></a>
+<a class="sourceLine" id="cb1-2" title="2"><span class="ot">{-# LANGUAGE DataKinds #-}</span></a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="ot">{-# LANGUAGE DeriveAnyClass #-}</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></a>
+<a class="sourceLine" id="cb1-5" title="5"><span class="ot">{-# LANGUAGE OverloadedLabels #-}</span></a>
+<a class="sourceLine" id="cb1-6" title="6"><span class="ot">{-# LANGUAGE PartialTypeSignatures #-}</span></a>
+<a class="sourceLine" id="cb1-7" title="7"><span class="ot">{-# LANGUAGE ScopedTypeVariables #-}</span></a>
+<a class="sourceLine" id="cb1-8" title="8"><span class="ot">{-# LANGUAGE TypeOperators #-}</span></a>
+<a class="sourceLine" id="cb1-9" title="9"><span class="kw">module</span> <span class="dt">TypeSurgery</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-10" title="10"></a>
+<a class="sourceLine" id="cb1-11" title="11"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Row.Records</span> <span class="kw">as</span> <span class="dt">Rec</span></a>
+<a class="sourceLine" id="cb1-12" title="12"></a>
+<a class="sourceLine" id="cb1-13" title="13"><span class="kw">import</span> <span class="dt">Data.Aeson</span></a>
+<a class="sourceLine" id="cb1-14" title="14"><span class="kw">import</span> <span class="dt">Data.Coerce</span>            (coerce)</a>
+<a class="sourceLine" id="cb1-15" title="15"><span class="kw">import</span> <span class="dt">Data.Functor.Identity</span>  (<span class="dt">Identity</span>(..))</a>
+<a class="sourceLine" id="cb1-16" title="16"></a>
+<a class="sourceLine" id="cb1-17" title="17"><span class="kw">import</span> <span class="dt">GHC.Generics</span></a>
+<a class="sourceLine" id="cb1-18" title="18"></a>
+<a class="sourceLine" id="cb1-19" title="19"><span class="co">-- Convenient lens functions (rather than importing Lens)</span></a>
+<a class="sourceLine" id="cb1-20" title="20"><span class="ot">over ::</span> ((a <span class="ot">-&gt;</span> <span class="dt">Identity</span> b) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">Identity</span> t) <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> t</a>
+<a class="sourceLine" id="cb1-21" title="21">over <span class="fu">=</span> coerce</a></code></pre></div>
+</details>
+<p>I’ll use the same example given in Lysxia’s blog:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">RecToy</span> <span class="fu">=</span> <span class="dt">RecToy</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  {<span class="ot"> iden     ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-3" title="3">  ,<span class="ot"> header1  ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-4" title="4">  ,<span class="ot"> header2  ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  ,<span class="ot"> payload  ::</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb2-6" title="6">  } <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>, <span class="dt">Generic</span>)</a></code></pre></div>
+<p>Here we have a toy record for which we’d like to generate a <code>FromJSON</code> instance, but we have a condition: the <code>payload</code> field is allowed to be optional in the JSON (i.e., a missing field should be parsed as the empty string <code>""</code>). Aeson’s generic instances work fine with optional fields <em>so long as they are <code>Maybe</code> fields</em>, so there seems to be no easy solution. We could make an alternate <code>RecToy'</code> whose <code>payload</code> field is a <code>Maybe String</code> and then convert it, but that’s a lot of boilerplate. We could also write our own <code>FromJSON</code> instance manually, but that’s tedious.</p>
+<p>So, let’s do some surgery!</p>
+<h2 id="generic-data-surgery">generic-data-surgery</h2>
+<p>Lyxsia describes the following solution using the generic-data-surgery library:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">RecToy</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-2" title="2"><span class="ot">  parseJSON ::</span> <span class="dt">Value</span> <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">RecToy</span></a>
+<a class="sourceLine" id="cb3-3" title="3">  parseJSON</a>
+<a class="sourceLine" id="cb3-4" title="4">    <span class="fu">=</span> <span class="fu">fmap</span> ( fromOR</a>
+<a class="sourceLine" id="cb3-5" title="5">           <span class="fu">.</span> modifyRField <span class="fu">@</span><span class="st">&quot;payload&quot;</span> defString</a>
+<a class="sourceLine" id="cb3-6" title="6">           <span class="fu">.</span> toOR&#39;)</a>
+<a class="sourceLine" id="cb3-7" title="7">    <span class="fu">.</span> genericParseJSON defaultOptions{omitNothingFields<span class="fu">=</span><span class="dt">True</span>}</a>
+<a class="sourceLine" id="cb3-8" title="8"></a>
+<a class="sourceLine" id="cb3-9" title="9"><span class="ot">defString ::</span> <span class="dt">Maybe</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb3-10" title="10">defString <span class="fu">=</span> <span class="fu">maybe</span> <span class="st">&quot;&quot;</span> <span class="fu">id</span></a></code></pre></div>
+<p>The key part here is the surgery going on in:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1">fromOR <span class="fu">.</span> modifyRField <span class="fu">@</span><span class="st">&quot;payload&quot;</span> defString <span class="fu">.</span> toOR&#39;</a></code></pre></div>
+<p>Let’s break this down:</p>
+<ul>
+<li><p>First, we head into the “operating room” with <code>toOR'</code>.</p></li>
+<li><p>Then, we modify the record field named <code>payload</code> by applying the <code>defString</code> function to it.</p></li>
+<li><p>Finally, we exit the “operating room” with <code>fromOR</code>.</p></li>
+</ul>
+<p>Behind the scenes at the type level, the <code>genericParseJSON</code> is being done on a synthetic type that looks just like <code>RecToy</code> but where the <code>payload</code> field has the type <code>Maybe String</code>. This synthetic type is lifted into the “operating room”, which is essentially lifting it into a manipulatable type and then “operated on”, where the <code>payload</code> field is converted from type <code>Maybe String</code> to <code>String</code> using the <code>defString</code> function. Finally, <code>fromOR</code> converts this manipulatable type to <code>RecToy</code>, and parsing is complete.</p>
+<h2 id="row-types-solution">row-types Solution</h2>
+<p>For a simple case like this, we can do almost the same thing with row-types. The main difference is that what generic-data-surgery calls an operating room, we simply call a row-types record (or variant). Indeed, instead of going to and from the OR, we can go to and from the native type using <code>Rec.toNative</code> and <code>Rec.fromNative</code>. Specifically:</p>
+<ul>
+<li><p>Because row-types records are generic themselves, we don’t actually need an operation like <code>toOR'</code>. The result of <code>genericParseJSON</code> will be inferred as the appropriate row-types record directly, and we can start with the expression to modify it.</p></li>
+<li><p>In place of <code>modifyRField @"payload" defString</code>, we do a lensy operation to change the record. In this case, we could write <code>over (Rec.focus #payload) defString</code>.</p></li>
+<li><p>Finally, we convert back to a Haskell native type with <code>Rec.toNative</code>.</p></li>
+</ul>
+<p>The full code looks like:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">RecToy</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-2" title="2"><span class="ot">  parseJSON ::</span> <span class="dt">Value</span> <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">RecToy</span></a>
+<a class="sourceLine" id="cb5-3" title="3">  parseJSON</a>
+<a class="sourceLine" id="cb5-4" title="4">    <span class="fu">=</span> <span class="fu">fmap</span> ( Rec.toNative</a>
+<a class="sourceLine" id="cb5-5" title="5">           <span class="fu">.</span> over (Rec.focus <span class="fu">#</span>payload) defString)</a>
+<a class="sourceLine" id="cb5-6" title="6">    <span class="fu">.</span> genericParseJSON defaultOptions{omitNothingFields<span class="fu">=</span><span class="dt">True</span>}</a></code></pre></div>
+<h2 id="limitations">Limitations</h2>
+<p>The row-types library is limited compared to generic-data-surgery in two specific ways: there are no conversion functions between full sum-of-products Haskell data types and variants of records, and there is no support for unnamed fields. The first limitation is simply because such a feature has never seemed necessary to row-types, and it could be added with a little generics programming.</p>
+<p>The second is a more fundamental limitation. Names are critical to the concept of the row-types library, as every field in a record and every possibility in a variant must be named. Therefore, it is simply impossible to convert a native record that has no field names into a row-types record (without a lot of defaulting).</p>
+    </section>
+</article>
+]]></description>
+    <pubDate>Mon, 01 Jun 2020 00:00:00 UT</pubDate>
+    <guid>https://danwc.com/posts/2020-06-01-TypeSurgery/index.html</guid>
+    <dc:creator>Daniel Winograd-Cort</dc:creator>
+</item>
+
+    </channel>
+</rss>
