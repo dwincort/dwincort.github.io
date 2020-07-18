@@ -37,7 +37,7 @@ looking forward to getting back into it if I ever get the money and time.
 
 <img class="rightsideimage" src="/images/dansparringfred.jpg" alt="Sparring" title="Sparring">
 I like playing bridge, and I typically play weekly with some friends.
-I'm also a fan of escape rooms and modern "euro"-style board games.  My favorites shift over time, but right now, I'm enjoying "Crusaders Thy Will Be Done", "Terraforming Mars", and "Gloomhaven".
+I'm also a fan of escape rooms and modern "euro"-style board games.  My favorites shift over time, but right now, I'm enjoying "Crusaders Thy Will Be Done", "Terraforming Mars", "Gloomhaven", and "Hanabi".
 
 <!-- I enjoy amateur photography.  I'm especially fond of my home-made infrared filter for my camera which allows me to take some pretty cool still pictures. -->
 <!-- Here are some of my favorites. -->

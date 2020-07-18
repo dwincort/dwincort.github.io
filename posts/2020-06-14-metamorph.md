@@ -41,7 +41,7 @@ From here, we can generalize no further.  It would be great to generalize `Show`
 
 With row-types, we can define a type
 ```haskell
-type MyRow = "a" .== Int .+ "b" .== Bool .+ "c" .== Char`
+type MyRow = "a" .== Int .+ "b" .== Bool .+ "c" .== Char
 type MyRowRecord = Rec MyRow
 ```
 This behaves just like the native version of `MyRecord` (in fact, you can use `fromNative` and `toNative` to simply convert values between the two representations), but since we're using row-types, we're open to a bit more flexibility.  Specifically, we now have a mapping function at our disposal that does exactly what we want:
@@ -55,7 +55,7 @@ There are two notable differences between this `map` function and the one above:
 
 1. We now have a requirement in the context of the form `Forall r c`.  Intuitively, this means that the constraint `c` holds on all of the types in the row `r`.
 
-2. The output is a record over the row-type `Map f r`.  The difference between `r` and `Map f r` is exactly the difference between `MyRecord` and `MyRecordHKD` — it simply wraps the type of each value within the row with the type function `f`.
+2. The output is a record over the row-type `Map f r`.  The difference between `r` and `Map f r` is exactly the difference between `MyRecord` and `MyRecordHKD` — it simply wraps the type of each value within the row with the type function `f`.  The row-types library also comes with a function `transform` that converts from a `Rec (Map f r)` to `Rec (Map g r)` (where the provided function must have type `forall a. c a => f a -> g a`).
 
 The `Forall` constraint is the key element that was missing without row-types, and with it, we can easily write a function that `show`s all the elements of `MyRowRecord`:
 
@@ -68,7 +68,7 @@ The big question remaining is: What is this `Forall`, and how does it work?
 
 ## Forall
 
-The `Forall` type class is one of the key elements that gives the row-types library the power it has.  It not only guarantees that each element of a row satisfies a given constraint, but it provides a function that allows one to make use of that fact.  This function works conceptually in two phases: first, it breaks apart the row into its constituent elements, and then it sews the row back up.  In this way, it acts first as a [catamorphism](https://en.wikipedia.org/wiki/Catamorphism) (a fold) and then as an [anamorphism](https://en.wikipedia.org/wiki/Anamorphism) (an unfold).  When these two morphisms happen back to back like this, they are together called a _metamorphism_.  The full definition of the `Forall` type class is:
+The `Forall` type class is one of the key elements that gives the row-types library the power it has.  It not only guarantees that each element of a row satisfies a given constraint, but it provides a function that allows one to make use of that fact.  This function works conceptually in two phases: first, it breaks apart the row into its constituent elements, and then it sews the row back up.  In this way, it acts first as a [catamorphism](https://en.wikipedia.org/wiki/Catamorphism) (a fold) and then as an [anamorphism](https://en.wikipedia.org/wiki/Anamorphism) (an unfold).  When these two morphisms happen back-to-back like this, they are together called a _metamorphism_.  The full definition of the `Forall` type class is:
 ```haskell
 class Forall (r :: Row k) (c :: k -> Constraint) where
   metamorph :: forall (p :: * -> * -> *) (f :: Row k -> *) (g :: Row k -> *) (h :: k -> *) .
@@ -93,15 +93,78 @@ newtype RMap (f :: * -> *) (ρ :: Row *) = RMap { unRMap :: Rec (Map f ρ) }
 
 The three prior arguments define a base case, the fold, and the unfold in that order.  This may be a bit surprising or even confusing, so let's fill in the types for `map` that we know, drop any constraints we don't need, and see what those arguments look like (we'll also fill in `(,)` for `p`, which is necessary when working with records, and `Identity` for `h`):
 ```haskell
-  -> (Rec Empty -> RMap Empty)
+  -> (Rec Empty -> RMap f Empty)
   -> (forall ℓ τ ρ. (KnownSymbol ℓ, c τ, HasType ℓ τ ρ)
      => Label ℓ -> Rec ρ -> (Identity τ, Rec (ρ .- ℓ)))
   -> (forall ℓ τ ρ. (KnownSymbol ℓ, c τ)
-     => Label ℓ -> (Identity τ, RMap ρ) -> RMap (Extend ℓ τ ρ))
+     => Label ℓ -> (Identity τ, RMap f ρ) -> RMap f (Extend ℓ τ ρ))
 ```
 If you squint, you see that the first argument is a function for how to convert an empty record from the input to the output — this is the base case.  The second argument is a function that dictates how a record gets split apart into the "next" element (the `Identity τ`) and the rest of the record — this is the guts of the catamorphism, or how to disassemble the record.  The final argument is a function for how to take a label, an element, and a partially built output record and extend the output record with that label — this is the heart of the anamorphism, or how to build up the record.
 
-Although there are some slight subtleties, it's pretty straightforward to define these three functions for `map`.  The base case simply returns `RMap empty`, the catamorphism function returns the pair of the value at `ℓ` with the record `r .- ℓ`, and the anamorphism function is an injection of the value into the record at the given label.<sup>[1](#myfootnote1)</sup>
+### `metamorph` in practice
+
+Conceptually, it's pretty straightforward to define the three above functions for `map`.  The base case simply returns `RMap empty`, the catamorphism function returns the pair of the value at `ℓ` with the record `r .- ℓ`, and the anamorphism function is an injection of the value into the record at the given label.  However, there are some slight subtleties that one must be aware of.
+
+First, let's write a base case.  This one really is easy:
+```haskell
+base :: Rec Empty -> RMap f Empty
+base _ = RMap empty
+```
+Empty records are uninteresting, so we can ignore the input and simply make a new empty record as output.
+
+Next, the catamorphism; this one is also not too bad:
+```haskell
+cata :: (KnownSymbol l, HasType l t r)
+     => Label l -> Rec r -> (Identity t, Rec (r .- l))
+cata l r = (Identity $ r .! l, lazyRemove l r)
+```
+Technically, we can add `c t` to the context, where `c` is whatever constraint we're given in `Forall r c`, but we don't actually need that information to write `cata`, so we omit it here.  Also note that the use of `lazyRemove` instead of the standard `.-` operator is simply a performance improvement and is not critical to the semantic behavior of the function.
+
+The anamorphism component is the tricky one.  Let's start with an obvious attempt:
+```haskell
+ana :: forall c f l t r. (KnownSymbol l, c t)
+    => (forall a. c a => a -> f a) -> Label l -> (Identity t, RMap f r) -> RMap f (Extend l t r)
+ana f l (Identity v, RMap r) = RMap (extend l (f v) r)
+```
+Given the value `v` and the record "so far", we produce the record extended with `f v`.  However, this doesn't work.  If we try this, GHC gives us the following type error:
+```
+Could not deduce: Extend l (f t) (Map f r) ~ Map f (Extend l t r)
+```
+On the face of it, this is understandable.  Recall that the type of `extend` is:
+```haskell
+extend :: forall t l r. KnownSymbol l => Label l -> t -> Rec r -> Rec (Extend l t r)
+```
+and `Extend` is a type family that does some ordering magic to make sure that labels are always in alphabetical order.  This means that we're producing a value with row-type `Extend l (f t) (Map f r)`, but the `RMap` constructor requires a row-type like `Map f (Extend l t r)`.
+
+But, on closer inspection, this begins to feel absurd.  When it comes to the ordering magic, the `Extend` type family only cares about the label of the type it's inserting into the row-type and not the type itself, and since we're inserting `l` in both instances, these really _should_ be the same.  Unfortunately, GHC simply cannot deduce this.
+
+Luckily, we have an escape hatch.  The row-types library comes with a `Data.Row.Dictionaries` module full of axioms specifically designed to overcome deduction hurdles like these.  For our purposes, we can import `mapExtendSwap`, which has the type:<sup>[2](#myfootnote2)</sup>
+```haskell
+mapExtendSwap :: forall l t r f. Dict (Extend l (f t) (Map f r) ≈ Map f (Extend l t r))
+```
+This value is a proof that the `Map` type family preserves labels and their ordering.  To use it, we simply provide the correct type arguments to instantiate it at the type we want and then use the `\\` operator (also exported by `Data.Row.Dictionaries` but originally from `Data.Constraint`) to provide the information to the type checker.  The correct definition of `ana` looks like this:
+```haskell
+ana :: forall c f l t r. (KnownSymbol l, c t)
+    => (forall a. c a => a -> f a) -> Label l -> (Identity t, RMap f r) -> RMap f (Extend l t r)
+ana f l (Identity v, RMap r) = RMap (extend l (f v) r)
+  \\ mapExtendSwap @l @t @r @f
+```
+With this complete, we can write a full definition of `map`, here putting `base`, `cata`, and `ana` in the `where` clause:
+```haskell
+map :: forall c f r. Forall r c => (forall a. c a => a -> f a)
+    -> Rec r -> Rec (Map f r)
+map f = unRMap . metamorph @_ @r @c @(,) @Rec @(RMap f) @Identity Proxy base cata ana
+  where
+    base _ = RMap empty
+    cata l r = (Identity $ r .! l, lazyRemove l r)
+    ana :: forall ℓ τ ρ. (KnownSymbol ℓ, c τ)
+           => Label ℓ -> (Identity τ, RMap f ρ) -> RMap f (Extend ℓ τ ρ)
+    ana l (Identity v, RMap r) = RMap (extend l (f v) r)
+      \\ mapExtendSwap @ℓ @τ @ρ @f
+```
+
+The `Data.Row.Dictionaries` module contains a good set of axioms, but it's definitely not a complete set.  Indeed, if you define your own custom type families like `Map`, you may need to define new axioms for it in order to use `metamorph` effectively.
+
 
 ## Metamorphism and further
 
@@ -152,39 +215,12 @@ class BiForall (r1 :: Row k1) (r2 :: Row k2) (c :: k1 -> k2 -> Constraint) where
     -> f r1 r2 -> g r1 r2
 ```
 
-The `biMetamorph` function is scary to look at, but functionally, it follows the very same patterns as `metamorph` only with a second row.  Importantly, it allows us to add _zipping_ mechanics over row-types with the same labels _but different types_.  Without partially applied type families, `biMetamorph` becomes very tiresome to use, but it has potential, and I'm hopeful for its future.
+The `biMetamorph` function is scary to look at, but functionally, it follows the very same patterns as `metamorph` only with a second row.  Importantly, it allows us to add _zipping_ mechanics over row-types with the same labels _but different types_.  For instance, `row-types` has a `switch` function that uses `biMetamorph`.  The `switch` function takes a variant along with a Record of functions from each possible value of the variant to a single output type, and then applies the correct function to the value in the variant.
 
 <br>
 
 ---
 #### Footnotes
-
-<a name="myfootnote1">1</a>:
-The full definition of `map` on records looks like this:
-```haskell
-map :: forall c f r. Forall r c => (forall a. c a => a -> f a)
-    -> Rec r -> Rec (Map f r)
-map f = unRMap . metamorph @_ @r @c @(,) @Rec @(RMap f) @Identity Proxy base cata ana
-  where
-    base _ = RMap empty
-    cata l r = (Identity $ r .! l, lazyRemove l r)
-    ana :: forall ℓ τ ρ. (KnownSymbol ℓ, c τ)
-           => Label ℓ -> (Identity τ, RMap f ρ) -> RMap f (Extend ℓ τ ρ)
-    ana l (Identity v, RMap r) = RMap (extend l (f v) r)
-      \\ mapExtendSwap @ℓ @τ @ρ @f
-```
-It's very close to the description that I gave above, but it uses `unsafeRemove` in `cata` and this mysterious `mapExtendSwap` in `ana`.  The `unsafeRemove` function is simply a performance improvement, and in fact, replacing it with `r .- l` works perfectly well.
-
-So what's the deal with `mapExtendSwap`?  The problem that we run into is that we need to generate a record with row-type `Map f (Extend ℓ τ ρ))`.  We have `r`, which is a record with row type `Map f ρ`, so we just `extend` that record with `f v` at label `l`, right?  Not so fast.  The type of `extend` is
-```haskell
-extend :: forall t l r. KnownSymbol l => Label l -> t -> Rec r -> Rec (Extend l t r)
-```
-where the type family `Extend` does some ordering magic to make sure that labels are always in alphabetical order.  So in order to call `extend`, we'll need to prove that `Extend ℓ (f τ) (Map f ρ) ~ Map f (Extend ℓ τ ρ)`.  This is where `mapExtendSwap` comes in.  Its type is:<sup>[2](#myfootnote2)</sup>
-```haskell
-mapExtendSwap :: forall ℓ τ r f. Dict(Extend ℓ (f τ) (Map f r) ~ Map f (Extend ℓ τ r))
-```
-In other words, it's free information at the type level that describes how `Extend` and `Map` relate and can be interchanged.  To bring it into scope, we use the function `\\` from `Data.Constraint`.
-
 
 <a name="myfootnote2">2</a>:
 I haven't shown the implementation of `mapExtendSwap`, and that's because there isn't one.  It's just an `unsafeCoerce` on an unconstrained `Dict`.  The result is always true, but I couldn't find a way to convince GHC of this without cheating.

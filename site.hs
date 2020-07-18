@@ -52,6 +52,7 @@ main = do
       route cleanRoute -- $ setExtension "html"
       compile $ pandocCompiler
         >>= loadAndApplyTemplate "templates/post.html"    postCtx
+        >>= saveSnapshot "content"
         >>= loadAndApplyTemplate "templates/default.html" postCtx
         >>= relativizeUrls
         >>= cleanIndexUrls
@@ -84,6 +85,21 @@ main = do
           >>= loadAndApplyTemplate "templates/sitemap.xml" sitemapCtx
           >>= cleanIndexUrls
 
+    create ["atom.xml"] $ do
+      route idRoute
+      compile $ do
+        let feedCtx = postCtx <> bodyField "description"
+        posts <- fmap (take 10) . recentFirst =<<
+          loadAllSnapshots "posts/*" "content"
+        renderAtom myFeedConfiguration feedCtx posts
+
+    create ["rss.xml"] $ do
+      route idRoute
+      compile $ do
+        let feedCtx = postCtx <> bodyField "description"
+        posts <- fmap (take 10) . recentFirst =<<
+          loadAllSnapshots "posts/*" "content"
+        renderRss myFeedConfiguration feedCtx posts
 
     -- match "index.html" $ do
     --     route idRoute
@@ -118,6 +134,19 @@ defaultContext' = constField "root" root <> defaultContext
 postCtx :: Context String
 postCtx = dateField "date" "%B %e, %Y" <> defaultContext'
   -- dateField "date" "%Y-%m-%d" <>
+
+
+--------------------------------------------------------------------------------
+-- RSS Feed Configuration
+-- from https://jaspervdj.be/hakyll/tutorials/05-snapshots-feeds.html
+myFeedConfiguration :: FeedConfiguration
+myFeedConfiguration = FeedConfiguration
+    { feedTitle       = "Dan Winograd-Cort's Posts"
+    , feedDescription = "This feed is about topics I'm interested in"
+    , feedAuthorName  = "Daniel Winograd-Cort"
+    , feedAuthorEmail = "dan@danwc.com"
+    , feedRoot        = "http://www.danwc.com"
+    }
 
 
 --------------------------------------------------------------------------------

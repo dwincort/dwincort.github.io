@@ -1,3 +1,20 @@
+# This circleci configuration is designed for a repo of the form <user>.github.io.
+# The master branch is designed to be untouched, and the "hakyll" branch is where
+# code is stored.  Whenever any branch is updated, circleci will build the code for
+# that branch and store the site as an artifact.  If the hakyll branch is updated,
+# circleci will additionally deploy the site data to the master branch.  By design,
+# the master branch should never be otherwise modified.
+#
+# Note that the master branch can still be examined in the standard git ways to see
+# what changed from commit to commit.  The model of this file uses regular commits
+# instead of force pushes that overwrite the history.
+#
+# Key aspects of the design are highlighted below in comments.  Various inspiration
+# came from (basically in order of usefulness):
+#   https://ajdawson.github.io/blog/deploying_a_hakyll_site_on_circleci_2.0.html
+#   https://futtetennismo.me/posts/hakyll/2017-10-22-deploying-to-github-pages-using-circleci-2.0.html
+#   https://nazarii.bardiuk.com/posts/hakyll-circle.html
+#   https://www.stackbuilders.com/news/dr-hakyll-create-a-github-page-with-hakyll-and-circleci
 version: 2
 jobs:
   build:
@@ -5,19 +22,30 @@ jobs:
       ignore:
         - master
     docker:
+      # This is key!  CircleCI will not magically provide openssh, and the stack
+      # lts from fpcomplete doesn't provide it either.  Furthermore, the stack
+      # lts takes forever to build hakyll.  This docker image includes hakyll
+      # along with openssh, allowing for fast builds and the ability to git push.
+      # See https://hub.docker.com/r/futtetennista/hakyll.
       - image: futtetennista/hakyll:4.12.5.1
     steps:
       - add_ssh_keys:
+        # In order to git push to your repo, you must set up a deploy key.  Follow
+        # the instructions found at
+        # https://circleci.com/docs/2.0/gh-bb-integration/#creating-a-github-deploy-key
           fingerprints:
             - "81:fc:9f:8a:77:ae:81:ba:0b:3c:25:26:6d:b4:79:fd"
       - checkout
       - restore_cache:
           name: Restore Cached Dependencies
           keys:
+            # I think having two keys here may be overkill?  Not sure
             - stack-{{ checksum "stack.yaml" }}-{{ checksum "website.cabal" }}
             - stack-{{ checksum "stack.yaml" }}
       - run:
           name: Resolve/Update Dependencies
+          # The -j1 and --fast are to be able to build hakyll on circleci machines.
+          # They may not be necessary using the futtetennista docker image.
           command: |
             stack --no-terminal setup
             stack --no-terminal build --dependencies-only -j1 --fast
@@ -36,25 +64,31 @@ jobs:
             stack exec site clean
             stack exec site build
       - store_artifacts:
+        # Storing the site as an artifact allows it to be viewable on circleci.
+        # This way, we can make a new branch, see the stored artifact, and know
+        # what will happen when we merge that branch into hakyll.
           path: _site
           destination: built_site
       - run:
           name: Publish GitHub Pages
           command: |
-            echo "Now setting up git"
-            git config user.name  'CircleCI'
-            git config user.email 'job@circleci.com'
-            echo "Switch to master"
-            git checkout master
-            echo "Remove the current site stuff ..."
-            rm -r `ls -a | grep -v "^\.$\|^\.\.$\|^\.git$\|^\.gitignore$\|^_site$"`
-            echo "... and replace it with what's in _site."
-            mv ./_site/* .
-            rm -r _site
-            echo "The new site contents is:"
-            ls -al
-            echo "Adding generated files and committing"
-            git add .
-            git commit -m "publish $CIRCLE_SHA1 [ci skip]"
-            echo "Pushing to master"
-            git push origin master
+            echo "We will only deploy if we are on the hakyll branch."
+            if [ "${CIRCLE_BRANCH}" == "hakyll" ]; then
+              echo "Now setting up git"
+              git config user.name  'CircleCI'
+              git config user.email 'job@circleci.com'
+              echo "Switch to master"
+              git checkout master
+              echo "Remove the current site stuff ..."
+              rm -r `ls -a | grep -v "^\.$\|^\.\.$\|^\.git$\|^\.gitignore$\|^_site$"`
+              echo "... and replace it with what's in _site."
+              mv ./_site/* .
+              rm -r _site
+              echo "The new site contents is:"
+              ls -al
+              echo "Adding generated files and committing"
+              git add .
+              git commit -m "publish $CIRCLE_SHA1 [ci skip]"
+              echo "Pushing to master"
+              git push origin master
+            fi
