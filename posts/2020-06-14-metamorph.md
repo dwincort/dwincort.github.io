@@ -140,14 +140,14 @@ But, on closer inspection, this begins to feel absurd.  When it comes to the ord
 
 Luckily, we have an escape hatch.  The row-types library comes with a `Data.Row.Dictionaries` module full of axioms specifically designed to overcome deduction hurdles like these.  For our purposes, we can import `mapExtendSwap`, which has the type:<sup>[2](#myfootnote2)</sup>
 ```haskell
-mapExtendSwap :: forall l t r f. Dict (Extend l (f t) (Map f r) ≈ Map f (Extend l t r))
+mapExtendSwap :: forall f l t r. Dict (Extend l (f t) (Map f r) ≈ Map f (Extend l t r))
 ```
 This value is a proof that the `Map` type family preserves labels and their ordering.  To use it, we simply provide the correct type arguments to instantiate it at the type we want and then use the `\\` operator (also exported by `Data.Row.Dictionaries` but originally from `Data.Constraint`) to provide the information to the type checker.  The correct definition of `ana` looks like this:
 ```haskell
 ana :: forall c f l t r. (KnownSymbol l, c t)
     => (forall a. c a => a -> f a) -> Label l -> (Identity t, RMap f r) -> RMap f (Extend l t r)
 ana f l (Identity v, RMap r) = RMap (extend l (f v) r)
-  \\ mapExtendSwap @l @t @r @f
+  \\ mapExtendSwap @f @l @t @r
 ```
 With this complete, we can write a full definition of `map`, here putting `base`, `cata`, and `ana` in the `where` clause:
 ```haskell
@@ -160,7 +160,7 @@ map f = unRMap . metamorph @_ @r @c @(,) @Rec @(RMap f) @Identity Proxy base cat
     ana :: forall ℓ τ ρ. (KnownSymbol ℓ, c τ)
            => Label ℓ -> (Identity τ, RMap f ρ) -> RMap f (Extend ℓ τ ρ)
     ana l (Identity v, RMap r) = RMap (extend l (f v) r)
-      \\ mapExtendSwap @ℓ @τ @ρ @f
+      \\ mapExtendSwap @f @ℓ @τ @ρ
 ```
 
 The `Data.Row.Dictionaries` module contains a good set of axioms, but it's definitely not a complete set.  Indeed, if you define your own custom type families like `Map`, you may need to define new axioms for it in order to use `metamorph` effectively.
