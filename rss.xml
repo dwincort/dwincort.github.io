@@ -7,8 +7,141 @@
         <description><![CDATA[This feed is about topics I'm interested in]]></description>
         <atom:link href="http://www.danwc.com/rss.xml" rel="self"
                    type="application/rss+xml" />
-        <lastBuildDate>Sun, 14 Jun 2020 00:00:00 UT</lastBuildDate>
+        <lastBuildDate>Sat, 12 Sep 2020 00:00:00 UT</lastBuildDate>
         <item>
+    <title>2020-09-12-deriving-via</title>
+    <link>https://danwc.com/posts/2020-09-12-deriving-via/index.html</link>
+    <description><![CDATA[<article>
+    <section class="header">
+        
+        Re-posted on September 12, 2020 (originally written April 10, 2020)
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="/css/syntax.css" />
+        <h1 id="overriding-type-class-instances">Overriding Type Class Instances</h1>
+<p>I read a post by Cary Robbins titled <a href="http://caryrobbins.com/dev/overriding-type-class-instances-2/">Overriding Type Class Instances</a> that describes a clever way to derive custom type class instances for types using some type-level programming tricks and the <code>DerivingVia</code> extension. It struck me that row-types should be able to do nearly the same thing almost for free, and I took it as a challenge to see if I could make it work. It required a minor change to the library (the addition of a specialized <code>coerce</code> function for records), but otherwise it was quite straightforward.</p>
+<h2 id="example">Example</h2>
+<details class="code-details">
+<p><summary>Extensions and imports for this Literate Haskell file</summary></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="ot">{-# LANGUAGE DerivingVia #-}</span></a>
+<a class="sourceLine" id="cb1-2" title="2"><span class="ot">{-# LANGUAGE OverloadedLabels #-}</span></a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="kw">module</span> <span class="dt">OverridingTypeClassInstances</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-5" title="5"></a>
+<a class="sourceLine" id="cb1-6" title="6"><span class="co">-- Note that `Data.Row.Aeson` is not exported my the row-types library and</span></a>
+<a class="sourceLine" id="cb1-7" title="7"><span class="co">-- currently lives in the src\aeson directory.  You must put it in an</span></a>
+<a class="sourceLine" id="cb1-8" title="8"><span class="co">-- appropriate place and make sure to have `aeson` in your environment in order</span></a>
+<a class="sourceLine" id="cb1-9" title="9"><span class="co">-- to use this module.</span></a>
+<a class="sourceLine" id="cb1-10" title="10"></a>
+<a class="sourceLine" id="cb1-11" title="11"><span class="kw">import</span>           <span class="dt">Data.Aeson</span>       (<span class="dt">ToJSON</span>(..))</a>
+<a class="sourceLine" id="cb1-12" title="12"><span class="kw">import</span>           <span class="dt">Data.Char</span>        (ord, toUpper)</a>
+<a class="sourceLine" id="cb1-13" title="13"><span class="kw">import</span>           <span class="dt">Data.Coerce</span></a>
+<a class="sourceLine" id="cb1-14" title="14"><span class="kw">import</span>           <span class="dt">Data.Row</span></a>
+<a class="sourceLine" id="cb1-15" title="15"><span class="kw">import</span>           <span class="dt">Data.Row.Aeson</span>   ()</a>
+<a class="sourceLine" id="cb1-16" title="16"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Row.Records</span> <span class="kw">as</span> <span class="dt">Rec</span></a>
+<a class="sourceLine" id="cb1-17" title="17"><span class="kw">import</span>           <span class="dt">Data.Text</span>        (<span class="dt">Text</span>)</a>
+<a class="sourceLine" id="cb1-18" title="18"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text</span>        <span class="kw">as</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb1-19" title="19"><span class="kw">import</span>           <span class="dt">GHC.Generics</span>     (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb1-20" title="20"></a>
+<a class="sourceLine" id="cb1-21" title="21"><span class="kw">newtype</span> <span class="dt">Uptext</span> <span class="fu">=</span> <span class="dt">Uptext</span> {<span class="ot"> unUptext ::</span> <span class="dt">Text</span> }</a>
+<a class="sourceLine" id="cb1-22" title="22"></a>
+<a class="sourceLine" id="cb1-23" title="23"><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">Uptext</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-24" title="24">  toJSON <span class="fu">=</span> toJSON <span class="fu">.</span> Text.toUpper <span class="fu">.</span> unUptext</a>
+<a class="sourceLine" id="cb1-25" title="25"></a>
+<a class="sourceLine" id="cb1-26" title="26"><span class="kw">newtype</span> <span class="dt">CharArray</span> <span class="fu">=</span> <span class="dt">CharArray</span> {<span class="ot"> unCharArray ::</span> <span class="dt">String</span> }</a>
+<a class="sourceLine" id="cb1-27" title="27"></a>
+<a class="sourceLine" id="cb1-28" title="28"><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">CharArray</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-29" title="29">  toJSON <span class="fu">=</span> toJSON <span class="fu">.</span> <span class="fu">map</span> (<span class="fu">:</span>[]) <span class="fu">.</span> unCharArray</a></code></pre></div>
+</details>
+<p>Cary’s result looks like the following:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">data</span> <span class="dt">MyRec</span> <span class="fu">=</span> <span class="dt">MyRec</span></a>
+<a class="sourceLine" id="cb2-2" title="2">  {<span class="ot"> foo ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb2-3" title="3">  ,<span class="ot"> bar ::</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb2-4" title="4">  ,<span class="ot"> baz ::</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb2-5" title="5">  } <span class="kw">deriving</span> stock (<span class="dt">Show</span>, <span class="dt">Eq</span>, <span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb2-6" title="6">    <span class="kw">deriving</span> (<span class="dt">ToJSON</span>)</a>
+<a class="sourceLine" id="cb2-7" title="7">      via <span class="dt">Override</span> <span class="dt">MyRec</span></a>
+<a class="sourceLine" id="cb2-8" title="8">            &#39;[ <span class="dt">String</span> <span class="ot">`As`</span> <span class="dt">CharArray</span></a>
+<a class="sourceLine" id="cb2-9" title="9">             , <span class="st">&quot;baz&quot;</span> <span class="ot">`As`</span> <span class="dt">Uptext</span></a>
+<a class="sourceLine" id="cb2-10" title="10">             ]</a></code></pre></div>
+<p>The idea here is that the <code>MyRec</code> data type can have a <code>ToJSON</code> instance where all <code>String</code> fields are encoded using the <code>ToJSON</code> functionality of the <code>CharArray</code> type class and the <code>baz</code> field is encoded using the <code>ToJSON</code> of <code>Uptext</code>. The rest of Cary’s post describes how he accomplishes this.</p>
+<p>With row-types, it’s currently not possible to do a wholesale modification based on types, but we certainly have machinery for modifying individual fields. Thus instead, I propose a slightly different syntax, this time based on row-types operators:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="kw">data</span> <span class="dt">MyRec</span> <span class="fu">=</span> <span class="dt">MyRec</span></a>
+<a class="sourceLine" id="cb3-2" title="2">  {<span class="ot"> foo ::</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-3" title="3">  ,<span class="ot"> bar ::</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb3-4" title="4">  ,<span class="ot"> baz ::</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb3-5" title="5">  } <span class="kw">deriving</span> stock (<span class="dt">Show</span>, <span class="dt">Eq</span>, <span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb3-6" title="6">    <span class="kw">deriving</span> (<span class="dt">ToJSON</span>)</a>
+<a class="sourceLine" id="cb3-7" title="7">      via <span class="dt">Override</span> <span class="dt">MyRec</span> (</a>
+<a class="sourceLine" id="cb3-8" title="8">           <span class="st">&quot;bar&quot;</span> <span class="fu">.==</span> <span class="dt">CharArray</span></a>
+<a class="sourceLine" id="cb3-9" title="9">        <span class="fu">.+</span> <span class="st">&quot;baz&quot;</span> <span class="fu">.==</span> <span class="dt">Uptext</span>)</a></code></pre></div>
+<h2 id="details">Details</h2>
+<p>The <code>Override</code> type is actually very simple:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">newtype</span> <span class="dt">Override</span> t (<span class="ot">mods ::</span> <span class="dt">Row</span> <span class="fu">*</span>) <span class="fu">=</span> <span class="dt">Override</span> {<span class="ot"> unOverride ::</span> t }</a></code></pre></div>
+<p>A value of type <code>Override t mods</code> is a value of type <code>t</code> that will have certain fields overridden according to <code>mods</code>. The key is in how we define the <code>ToJSON</code> instance for <code>Override</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">instance</span></a>
+<a class="sourceLine" id="cb5-2" title="2">  ( ρ ≈ <span class="dt">Rec.NativeRow</span> t</a>
+<a class="sourceLine" id="cb5-3" title="3">  , ρ&#39; ≈ mods <span class="fu">.//</span> ρ</a>
+<a class="sourceLine" id="cb5-4" title="4">  , <span class="dt">BiForall</span> ρ ρ&#39; <span class="dt">Coercible</span></a>
+<a class="sourceLine" id="cb5-5" title="5">  , <span class="dt">Rec.FromNative</span> t</a>
+<a class="sourceLine" id="cb5-6" title="6">  , <span class="dt">Forall</span> ρ&#39; <span class="dt">ToJSON</span></a>
+<a class="sourceLine" id="cb5-7" title="7">  ) <span class="ot">=&gt;</span> <span class="dt">ToJSON</span> (<span class="dt">Override</span> t mods) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-8" title="8">  toJSON <span class="fu">=</span> toJSON <span class="fu">.</span> Rec.coerceRec <span class="fu">@</span>ρ <span class="fu">@</span>ρ&#39; <span class="fu">.</span> Rec.fromNative <span class="fu">.</span> unOverride</a></code></pre></div>
+<p>This may look a little intimidating, so let’s take it piece by piece. I’ll start with <code>unOverride</code> and work through the composed functions, calling out elements of the context as they become relevant and necessary.</p>
+<ul>
+<li><p><code>unOverride</code> is the simplest component. We must unwrap the <code>Override</code> newtype.</p></li>
+<li><p><code>Rec.fromNative</code> is a convenient function for converting a native Haskell data type value into a row-types record. It produces a record with exactly the same fields and types as the given record. For instance, when called on a value of type <code>MyRec</code>, it will produce a value of type <code>Rec ("foo" .== Int .+ "bar" .== String .+ "baz" .== Text)</code>. In order to do this, we need the constraint <code>Rec.FromNative t</code>, and it additionally provides a type synonym <code>Rec.NativeRow t</code> which will be equal to the row-type produced. You can see that in the instance’s context above, we bind the type variable <code>ρ</code> to this type.</p></li>
+<li><p><code>Rec.coerceRec @ρ @ρ'</code> is a record coercion turning a record with row-type <code>ρ</code> to one of of type <code>ρ'</code>. This will only succeed if all of the types in <code>ρ</code> match up and are coercible with all the types in <code>ρ'</code>, a fact that is captured by the constraint <code>BiForall ρ ρ' Coercible</code>. What is <code>ρ'</code>? It is precisely <code>ρ</code>, but overwritten with any row bindings in <code>mods</code> (this is captured in <code>ρ' ≈ mods .// ρ</code>). For example, <code>("bar" .== CharArray) .// ("foo" .== Int .+ "bar" .== String .+ "baz" .== Text)</code> becomes <code>("foo" .== Int .+ "bar" .== CharArray .+ "baz" .== Text)</code>.</p></li>
+<li><p><code>toJSON</code> is the <code>toJSON</code> function specialized to records with type <code>ρ'</code>, and it requires the constraint <code>Forall ρ' ToJSON</code>, indicating that every field in <code>ρ'</code> must have its own <code>ToJSON</code> instance.</p></li>
+</ul>
+<p>Phew! What does that all mean? It means we can take a value of type <code>t</code>, convert it to a row-types record, coerce any internal types to newtypes with <code>ToJSON</code> instances we prefer, and then produce the JSON of the result all in one go. And it works! It’s true that the instance definition is a little hairy, but thankfully we don’t need to mess around with any <code>Generic</code> code.</p>
+<h2 id="exploring-overrides">Exploring Overrides</h2>
+<p>Cary defines an <code>override</code> shorthand and then proceeds to demo some examples. I’ll do the same.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="co">-- | A version of &#39;Override&#39; that accepts first the value and then the mods type.</span></a>
+<a class="sourceLine" id="cb6-2" title="2"><span class="ot">override ::</span> a <span class="ot">-&gt;</span> (<span class="kw">forall</span> mods<span class="fu">.</span> <span class="dt">Override</span> a mods)</a>
+<a class="sourceLine" id="cb6-3" title="3">override <span class="fu">=</span> <span class="dt">Override</span></a></code></pre></div>
+<p>Now we can write statements in GHCi like:</p>
+<pre><code>&gt; v = MyRec 3 &quot;foo&quot; &quot;text&quot;
+&gt; encode $ override v @Empty
+{&quot;foo&quot;:3,&quot;baz&quot;:&quot;text&quot;,&quot;bar&quot;:&quot;foo&quot;}
+
+&gt; encode $ override v @(&quot;bar&quot; .== CharArray .+ &quot;baz&quot; .== Uptext)
+{&quot;foo&quot;:3,&quot;baz&quot;:&quot;TEXT&quot;,&quot;bar&quot;:[&quot;f&quot;,&quot;o&quot;,&quot;o&quot;]}</code></pre>
+<p>We also get pretty good type errors when we do things wrong. For instance, if we try to override the same field more than once:</p>
+<pre><code>&gt; encode $ override v @(&quot;bar&quot; .== CharArray .+ &quot;bar&quot; .== String)
+&lt;interactive&gt;:4:1: error:
+    • The label &quot;bar&quot; has conflicting assignments.
+      Its type is both CharArray and String.
+    • In the expression:
+        encode $ override v @(&quot;bar&quot; .== CharArray .+ &quot;bar&quot; .== String)
+      In an equation for ‘it’:
+          it
+            = encode $ override v @(&quot;bar&quot; .== CharArray .+ &quot;bar&quot; .== IntChar)</code></pre>
+<p>Alternatively, if you try to coerce to a type that’s not coercible, you’ll get a good error:</p>
+<pre><code>&gt; encode $ override v @(&quot;bar&quot; .== Int)
+&lt;interactive&gt;:5:1: error:
+    • Couldn&#39;t match representation of type ‘[Char]’ with that of ‘Int’
+        arising from a use of ‘encode’
+    • In the expression: encode $ override v @(&quot;bar&quot; .== Int)
+      In an equation for ‘it’: it = encode $ override v @(&quot;bar&quot; .== Int)</code></pre>
+<h2 id="achievements-and-limitations">Achievements and Limitations</h2>
+<p>With a simple <code>newtype</code> and a one-line <code>ToJSON</code> instance (the implementation of the instance is a simple one line, although I’ll admit the context takes a few more), we’ve been able to recreate most of the expressiveness of <code>generic-override</code>. Of course, <code>generic-override</code> has one feature that we don’t: namely, being able to override all fields of a particular type in one go. I can definitely see the use for this feature—for instance, making sure <em>all</em> <code>Text</code> fields are encoded in a consistent, perhaps more concise, way—but I don’t see a way to do it elegantly with row-types at this time.<sup><a href="#myfootnote1">1</a></sup></p>
+<p>But we do gain for what we’ve given up. Without needing a <code>ValidateOverride</code> type class, we have clear restrictions (and informative error messages) that prevent us from duplicate overriding. Additionally, we of course have all the other benefits of row-types.</p>
+<hr />
+<p><a name="myfootnote1">1</a>: If/When GHC adopts the ability to use simple, unsaturated type families, this will become possible. For instance, one could write something like</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="kw">type</span> <span class="kw">family</span> <span class="dt">ToUptext</span> t <span class="kw">where</span></a>
+<a class="sourceLine" id="cb10-2" title="2">  <span class="dt">ToUptext</span> <span class="dt">Text</span> <span class="fu">=</span> <span class="dt">Uptext</span></a>
+<a class="sourceLine" id="cb10-3" title="3">  <span class="dt">ToUptext</span> x <span class="fu">=</span> x</a></code></pre></div>
+<p>and then make the override modifications: <code>Rec.Map ToUptext (Rec.NativeRow MyRec)</code>. This in itself is still slightly ugly, but unsaturated type families give us the ability to write more higher-order type functions, such as a row-types <code>Filter</code>. From there, it’s a brief hop to a type-level function <code>FieldsOfTo MyRec Text Uptext</code> which would produce a row-type containing all of the fields of <code>MyRec</code> that had the type <code>Text</code>, now with the type <code>Uptext</code>. Just <code>.+</code> that with any other type modifications you want to make, and you’re all set.</p>
+    </section>
+</article>
+]]></description>
+    <pubDate>Sat, 12 Sep 2020 00:00:00 UT</pubDate>
+    <guid>https://danwc.com/posts/2020-09-12-deriving-via/index.html</guid>
+    <dc:creator>Daniel Winograd-Cort</dc:creator>
+</item>
+<item>
     <title>2020-06-14-metamorph</title>
     <link>https://danwc.com/posts/2020-06-14-metamorph/index.html</link>
     <description><![CDATA[<article>
@@ -102,12 +235,12 @@
 <p>and <code>Extend</code> is a type family that does some ordering magic to make sure that labels are always in alphabetical order. This means that we’re producing a value with row-type <code>Extend l (f t) (Map f r)</code>, but the <code>RMap</code> constructor requires a row-type like <code>Map f (Extend l t r)</code>.</p>
 <p>But, on closer inspection, this begins to feel absurd. When it comes to the ordering magic, the <code>Extend</code> type family only cares about the label of the type it’s inserting into the row-type and not the type itself, and since we’re inserting <code>l</code> in both instances, these really <em>should</em> be the same. Unfortunately, GHC simply cannot deduce this.</p>
 <p>Luckily, we have an escape hatch. The row-types library comes with a <code>Data.Row.Dictionaries</code> module full of axioms specifically designed to overcome deduction hurdles like these. For our purposes, we can import <code>mapExtendSwap</code>, which has the type:<sup><a href="#myfootnote2">2</a></sup></p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1"><span class="ot">mapExtendSwap ::</span> <span class="kw">forall</span> l t r f<span class="fu">.</span> <span class="dt">Dict</span> (<span class="dt">Extend</span> l (f t) (<span class="dt">Map</span> f r) ≈ <span class="dt">Map</span> f (<span class="dt">Extend</span> l t r))</a></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1"><span class="ot">mapExtendSwap ::</span> <span class="kw">forall</span> f l t r<span class="fu">.</span> <span class="dt">Dict</span> (<span class="dt">Extend</span> l (f t) (<span class="dt">Map</span> f r) ≈ <span class="dt">Map</span> f (<span class="dt">Extend</span> l t r))</a></code></pre></div>
 <p>This value is a proof that the <code>Map</code> type family preserves labels and their ordering. To use it, we simply provide the correct type arguments to instantiate it at the type we want and then use the <code>\\</code> operator (also exported by <code>Data.Row.Dictionaries</code> but originally from <code>Data.Constraint</code>) to provide the information to the type checker. The correct definition of <code>ana</code> looks like this:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" title="1"><span class="ot">ana ::</span> <span class="kw">forall</span> c f l t r<span class="fu">.</span> (<span class="dt">KnownSymbol</span> l, c t)</a>
 <a class="sourceLine" id="cb17-2" title="2">    <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a) <span class="ot">-&gt;</span> <span class="dt">Label</span> l <span class="ot">-&gt;</span> (<span class="dt">Identity</span> t, <span class="dt">RMap</span> f r) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> l t r)</a>
 <a class="sourceLine" id="cb17-3" title="3">ana f l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a>
-<a class="sourceLine" id="cb17-4" title="4">  \\ mapExtendSwap <span class="fu">@</span>l <span class="fu">@</span>t <span class="fu">@</span>r <span class="fu">@</span>f</a></code></pre></div>
+<a class="sourceLine" id="cb17-4" title="4">  \\ mapExtendSwap <span class="fu">@</span>f <span class="fu">@</span>l <span class="fu">@</span>t <span class="fu">@</span>r</a></code></pre></div>
 <p>With this complete, we can write a full definition of <code>map</code>, here putting <code>base</code>, <code>cata</code>, and <code>ana</code> in the <code>where</code> clause:</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" title="1"><span class="fu">map</span><span class="ot"> ::</span> <span class="kw">forall</span> c f r<span class="fu">.</span> <span class="dt">Forall</span> r c <span class="ot">=&gt;</span> (<span class="kw">forall</span> a<span class="fu">.</span> c a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> f a)</a>
 <a class="sourceLine" id="cb18-2" title="2">    <span class="ot">-&gt;</span> <span class="dt">Rec</span> r <span class="ot">-&gt;</span> <span class="dt">Rec</span> (<span class="dt">Map</span> f r)</a>
@@ -118,7 +251,7 @@
 <a class="sourceLine" id="cb18-7" title="7"><span class="ot">    ana ::</span> <span class="kw">forall</span> ℓ τ ρ<span class="fu">.</span> (<span class="dt">KnownSymbol</span> ℓ, c τ)</a>
 <a class="sourceLine" id="cb18-8" title="8">           <span class="ot">=&gt;</span> <span class="dt">Label</span> ℓ <span class="ot">-&gt;</span> (<span class="dt">Identity</span> τ, <span class="dt">RMap</span> f ρ) <span class="ot">-&gt;</span> <span class="dt">RMap</span> f (<span class="dt">Extend</span> ℓ τ ρ)</a>
 <a class="sourceLine" id="cb18-9" title="9">    ana l (<span class="dt">Identity</span> v, <span class="dt">RMap</span> r) <span class="fu">=</span> <span class="dt">RMap</span> (extend l (f v) r)</a>
-<a class="sourceLine" id="cb18-10" title="10">      \\ mapExtendSwap <span class="fu">@</span>ℓ <span class="fu">@</span>τ <span class="fu">@</span>ρ <span class="fu">@</span>f</a></code></pre></div>
+<a class="sourceLine" id="cb18-10" title="10">      \\ mapExtendSwap <span class="fu">@</span>f <span class="fu">@</span>ℓ <span class="fu">@</span>τ <span class="fu">@</span>ρ</a></code></pre></div>
 <p>The <code>Data.Row.Dictionaries</code> module contains a good set of axioms, but it’s definitely not a complete set. Indeed, if you define your own custom type families like <code>Map</code>, you may need to define new axioms for it in order to use <code>metamorph</code> effectively.</p>
 <h2 id="metamorphism-and-further">Metamorphism and further</h2>
 <p>We can do much more with <code>metamorphism</code> than just a simple record <code>map</code> — the key is choosing the right types. For instance, let’s look again at the type <code>p</code>, the bifunctor that determines the structure of the output of the catamorphism and the input of the anamorphism. For records, we chose to use <code>(,)</code>, signifying that each type in the row gives rise to a value (<code>h τ</code>) and the rest of the row. However, if we choose <code>Either</code>, then each type in the row gives rise to <em>either</em> a value <em>or</em> the rest of the row. This is <em>exactly</em> what we need to metamorphize <em>variants</em>, and indeed, writing <code>map</code> for the <code>Var</code> type involves a call to <code>metamorph</code> with <code>p</code> as <code>Either</code>. The two other canonical bifunctors are <code>Const</code> and <code>FlipConst</code>; <code>Const</code> can be used in cases where we simply want an arbitrary entry in the row, and <code>FlipConst</code> is useful when we don’t care about the values in the row at all (<code>FlipConst</code> is used during <code>fromLabels</code>, where we generate a record/variant from a row-type that has no value yet).</p>
