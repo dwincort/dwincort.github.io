@@ -5,7 +5,19 @@ teaching: true
 
 # Teaching
 
-I am not currently teaching in any capacity, but it is something that I enjoy very much.  For that reason, I still keep my statement of teaching philosophy available [here](/data/dwcTeachingStatement.pdf).  I have spent many years as a teaching assistant for computer science classes, and I have been a private tutor for high school math, chemistry, and physics.  
+I am not currently teaching in any official capacity, but it is something that I
+enjoy very much.  For that reason, I still keep my statement of teaching
+philosophy available [here](/data/dwcTeachingStatement.pdf).  I have spent many
+years as a teaching assistant for computer science classes, and I have been a
+private tutor for high school math, chemistry, and physics.  
+
+## Recent Teaching
+
+I have taught (and continued to learn!) Haskell at my recent jobs, but not in
+formal settings.  Additionally, I taught some basic computer science and
+practical Python skills to a friend working in biological sciences, allowing him
+to write a script for identifying a select agent pathogen, ultimately leading to
+a [peer-reviewed journal publication](https://www.sciencedirect.com/science/article/abs/pii/S0167701216300276).
 
 ## Yale University Teaching Fellow (2010-2014)
 
