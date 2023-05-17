@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generic Coerce — Daniel Winograd-Cort</title>
+    
+    <meta name="keywords" content="haskell, Generics, coerce">
+
+    <link rel="shortcut icon" type="image/x-icon" href="../../images/haskell-logo.png?format=100w" />  <!-- href="/favicon.ico?format=100w" -->
+    <link rel="canonical" href="http://www.danwc.com" />
+    <meta property="og:site_name" content="Daniel Winograd‑Cort" />
+    <meta property="og:title" content="Generic Coerce — Daniel Winograd-Cort" />
+    <meta property="og:url" content="https://danwc.com/posts/2021-02-03-generic-coerce/index.html" />
+    <meta property="og:type" content="website" />
+    <meta itemprop="name" content="Generic Coerce — Daniel Winograd-Cort" />
+    <meta itemprop="url" content="https://danwc.com/posts/2021-02-03-generic-coerce/index.html" />
+    <meta name="twitter:title" content="Daniel Winograd‑Cort" />
+    <meta name="twitter:url" content="https://danwc.com/posts/2021-02-03-generic-coerce/index.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="description" content />
+
+    <link rel="stylesheet" href="../../css/default.css" />
+  </head>
+  <body>
+    <header>
+      <div class="site-title">
+        <h1 class="site-title site-title">
+          <a href="../../" title="Daniel Winograd‑Cort">
+            <span>Daniel Winograd‑Cort</span>
+          </a>
+        </h1>
+      </div>
+      <div class="site-description">
+        <p>Principal Software Engineer at Luminous Computing</p>
+      </div>
+
+      <nav>
+        <a href="../../posts">Posts</a>
+        <a href="../../research">Research</a>
+        <a href="../../projects">Projects</a>
+        <a href="../../teaching">Teaching</a>
+        <a href="../../data/danwc-resume.pdf" target="_blank">Resume</a>
+        <a href="../../personal">Personal</a>
+        <a href="../../contact">Contact</a>
+      </nav>
+    </header>
+
+    <main role="main">
+      <article>
+    <section class="header">
+        
+        Posted on February  3, 2021
+        
+    </section>
+    <section>
+        <link rel="stylesheet" href="../../css/syntax.css" />
+        <h1 id="generic-coerce">Generic Coerce</h1>
+<h2 id="limits-of-coerce">Limits of <code>coerce</code></h2>
+<p>Someone <a href="https://stackoverflow.com/questions/66011340">asked a question on stack overflow</a> that got me thinking about Generics. The question itself was about why <code>Coercible</code> is so limited. A very simple version of the question goes like this:</p>
+<blockquote>
+<p>I have a data type that is isomorphic to <code>Bool</code>, like so:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">data</span> <span class="dt">Foo</span> <span class="fu">=</span> <span class="dt">Bar</span> <span class="fu">|</span> <span class="dt">Qux</span></a></code></pre></div>
+<p>Why is there no instance for <code>Coercible Bool Foo</code>? How can I make one?</p>
+</blockquote>
+<p>It’s pretty obvious that these two types are isomorphic, and indeed, GHC has the same memory representation for them under the hood, but there is no way to generate a <code>Coercible</code> instance for them, which means that <code>coerce</code> is not allowed.</p>
+<p>Of course, one could write the obvious coercion functions manually, but this is tedious and error-prone (especially with more complex types), and it may have poor performance too. Another option is to use <code>unsafeCoerce</code>, as in:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" title="1"><span class="ot">fooToBool ::</span> <span class="dt">Foo</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></a>
+<a class="sourceLine" id="cb2-2" title="2">fooToBool <span class="fu">=</span> unsafeCoerce</a></code></pre></div>
+<p>This has the advantage of being high performance, but there’s absolutely no type safety. If someone goes ahead and changes <code>Foo</code> so that it’s no longer isomorphic to <code>Bool</code>, this function will still type check, even if behavior becomes … suspect.</p>
+<h2 id="generic-coerce-1">Generic Coerce</h2>
+<p>This is where <code>Generic</code> comes in. Using <code>Generic</code>, we can define a type-level isomorphism between two types, up to meta data. I’ll hide the Haskell header behind this dropdown, but then consider the following definitions:</p>
+<details class="code-details">
+<p><summary>Haskell extensions and imports</summary></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></a>
+<a class="sourceLine" id="cb3-2" title="2"><span class="ot">{-# LANGUAGE EmptyCase #-}</span></a>
+<a class="sourceLine" id="cb3-3" title="3"><span class="ot">{-# LANGUAGE ExplicitForAll #-}</span></a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="ot">{-# LANGUAGE FlexibleContexts #-}</span></a>
+<a class="sourceLine" id="cb3-5" title="5"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span></a>
+<a class="sourceLine" id="cb3-6" title="6"><span class="ot">{-# LANGUAGE LambdaCase #-}</span></a>
+<a class="sourceLine" id="cb3-7" title="7"><span class="ot">{-# LANGUAGE MultiParamTypeClasses #-}</span></a>
+<a class="sourceLine" id="cb3-8" title="8"><span class="ot">{-# LANGUAGE PolyKinds #-}</span></a>
+<a class="sourceLine" id="cb3-9" title="9"><span class="ot">{-# LANGUAGE StandaloneDeriving #-}</span></a>
+<a class="sourceLine" id="cb3-10" title="10"><span class="ot">{-# LANGUAGE TypeApplications #-}</span></a>
+<a class="sourceLine" id="cb3-11" title="11"><span class="ot">{-# LANGUAGE TypeOperators #-}</span></a>
+<a class="sourceLine" id="cb3-12" title="12"><span class="ot">{-# LANGUAGE UndecidableInstances #-}</span></a>
+<a class="sourceLine" id="cb3-13" title="13"><span class="kw">module</span> <span class="dt">Generics.Coerce</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-14" title="14"></a>
+<a class="sourceLine" id="cb3-15" title="15"><span class="kw">import</span> <span class="dt">Data.Functor.Identity</span></a>
+<a class="sourceLine" id="cb3-16" title="16"><span class="kw">import</span> <span class="dt">GHC.Generics</span></a>
+<a class="sourceLine" id="cb3-17" title="17"><span class="kw">import</span> <span class="dt">Unsafe.Coerce</span> (unsafeCoerce)</a>
+<a class="sourceLine" id="cb3-18" title="18"></a>
+<a class="sourceLine" id="cb3-19" title="19"><span class="kw">data</span> <span class="dt">Foo</span> <span class="fu">=</span> <span class="dt">Bar</span> <span class="fu">|</span> <span class="dt">Qux</span></a>
+<a class="sourceLine" id="cb3-20" title="20">  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>)</a></code></pre></div>
+</details>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">class</span> <span class="dt">GenericCoerce</span> a b <span class="kw">where</span></a>
+<a class="sourceLine" id="cb4-2" title="2"><span class="ot">  genericCoerce' ::</span> a x <span class="ot">-&gt;</span> b x</a>
+<a class="sourceLine" id="cb4-3" title="3"></a>
+<a class="sourceLine" id="cb4-4" title="4"><span class="ot">genericCoerce ::</span> (<span class="dt">Generic</span> x, <span class="dt">Generic</span> y, <span class="dt">GenericCoerce</span> (<span class="dt">Rep</span> x) (<span class="dt">Rep</span> y)) <span class="ot">=&gt;</span> x <span class="ot">-&gt;</span> y</a>
+<a class="sourceLine" id="cb4-5" title="5">genericCoerce <span class="fu">=</span> to <span class="fu">.</span> genericCoerce' <span class="fu">.</span> from</a></code></pre></div>
+<p>If we have two types that are both <code>Generic</code>, and we can coerce between their <code>Rep</code>s, then we can coerce between them. What’s left is to define the instances of <code>GenericCoerce</code>. As we must for any <code>Generic</code> class, we need to handle the six cases: void, unit, sum, product, container, and wrapper. These all have quite natural definitions:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">instance</span> <span class="dt">GenericCoerce</span> <span class="dt">V1</span> <span class="dt">V1</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-2" title="2">  genericCoerce' <span class="fu">=</span> \<span class="kw">case</span></a>
+<a class="sourceLine" id="cb5-3" title="3"></a>
+<a class="sourceLine" id="cb5-4" title="4"><span class="kw">instance</span> <span class="dt">GenericCoerce</span> <span class="dt">U1</span> <span class="dt">U1</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-5" title="5">  genericCoerce' <span class="fu">=</span> <span class="fu">id</span></a>
+<a class="sourceLine" id="cb5-6" title="6"></a>
+<a class="sourceLine" id="cb5-7" title="7"><span class="kw">instance</span> (<span class="dt">GenericCoerce</span> f f', <span class="dt">GenericCoerce</span> g g') <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (f <span class="fu">:+:</span> g) (f' <span class="fu">:+:</span> g') <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-8" title="8">  genericCoerce' (<span class="dt">L1</span> x) <span class="fu">=</span> <span class="dt">L1</span> (genericCoerce' x)</a>
+<a class="sourceLine" id="cb5-9" title="9">  genericCoerce' (<span class="dt">R1</span> x) <span class="fu">=</span> <span class="dt">R1</span> (genericCoerce' x)</a>
+<a class="sourceLine" id="cb5-10" title="10"></a>
+<a class="sourceLine" id="cb5-11" title="11"><span class="kw">instance</span> (<span class="dt">GenericCoerce</span> f f', <span class="dt">GenericCoerce</span> g g') <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (f <span class="fu">:*:</span> g) (f' <span class="fu">:*:</span> g') <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-12" title="12">  genericCoerce' (x <span class="fu">:*:</span> y) <span class="fu">=</span> genericCoerce' x <span class="fu">:*:</span> genericCoerce' y</a>
+<a class="sourceLine" id="cb5-13" title="13"></a>
+<a class="sourceLine" id="cb5-14" title="14"><span class="kw">instance</span> <span class="dt">GenericCoerce</span> cs1 cs2 <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (<span class="dt">M1</span> t m cs1) (<span class="dt">M1</span> t m' cs2) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-15" title="15">  genericCoerce' (<span class="dt">M1</span> x) <span class="fu">=</span> <span class="dt">M1</span> (genericCoerce' x)</a>
+<a class="sourceLine" id="cb5-16" title="16"></a>
+<a class="sourceLine" id="cb5-17" title="17"><span class="kw">instance</span> (<span class="dt">Generic</span> x, <span class="dt">Generic</span> y, <span class="dt">GenericCoerce</span> (<span class="dt">Rep</span> x) (<span class="dt">Rep</span> y)) <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (<span class="dt">K1</span> t x) (<span class="dt">K1</span> t y) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-18" title="18">  genericCoerce' (<span class="dt">K1</span> x) <span class="fu">=</span> <span class="dt">K1</span> (genericCoerce x)</a></code></pre></div>
+<p>For instance, unit is obviously coercible to unit. Furthermore, if we can individually coerce the lefts and rights of two sum types, then we can coerce those sum types too.</p>
+<p>Indeed, this seems to solve our problem and give us a whole new way to coerce between two types. In action, we have:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span><span class="dt">Bool</span> <span class="fu">@</span><span class="dt">Foo</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb6-2" title="2"><span class="dt">Baz</span></a>
+<a class="sourceLine" id="cb6-3" title="3"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span><span class="dt">Bool</span> <span class="fu">@</span><span class="dt">Foo</span> <span class="dt">False</span></a>
+<a class="sourceLine" id="cb6-4" title="4"><span class="dt">Qux</span></a>
+<a class="sourceLine" id="cb6-5" title="5"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span><span class="dt">Foo</span> <span class="fu">@</span><span class="dt">Bool</span> <span class="dt">Baz</span></a>
+<a class="sourceLine" id="cb6-6" title="6"><span class="dt">True</span></a></code></pre></div>
+<h2 id="non-generic-types">Non-Generic types</h2>
+<p>There are some obvious problems with <code>genericCoerce</code>. For one, it only works on types that are instances of <code>Generic</code>, so, for example, <code>genericCoerce @Int @Int 3</code> doesn’t work at all. But in fact, because of the way we’ve written the <code>K1</code> (recursive) case, even something like <code>genericCoerce @[Int] @[Int] [3]</code> doesn’t work.</p>
+<p>In a perfect world, we’d be able to tell GHC to do something like “Use <code>coerce</code> if there’s a <code>Coercible</code> instance, and otherwise, try <code>genericCoerce</code>”, but this isn’t possible. The best I’ve been able to come up with is to use <em>incoherent instances</em>. Incoherent instances are typically <strong>considered dangerous</strong>, and I’m not sure this is really a good enough use for them (is there one?), but let’s have some fun! Let’s replace the instance we have with:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="kw">instance</span> <span class="ot">{-# INCOHERENT #-}</span> <span class="dt">Coercible</span> x y <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (<span class="dt">K1</span> t x) (<span class="dt">Rec0</span> y) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb7-2" title="2">  genericCoerce' (<span class="dt">K1</span> x) <span class="fu">=</span> <span class="dt">K1</span> (coerce x)</a>
+<a class="sourceLine" id="cb7-3" title="3"></a>
+<a class="sourceLine" id="cb7-4" title="4"><span class="kw">instance</span> <span class="ot">{-# INCOHERENT #-}</span> (<span class="dt">Generic</span> x, <span class="dt">Generic</span> y, <span class="dt">GenericCoerce</span> (<span class="dt">Rep</span> x) (<span class="dt">Rep</span> y)) <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (<span class="dt">Rec0</span> x) (<span class="dt">K1</span> t y) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb7-5" title="5">  genericCoerce' (<span class="dt">K1</span> x) <span class="fu">=</span> <span class="dt">K1</span> (genericCoerce x)</a></code></pre></div>
+<p>Here we’ve used a stupid trick to get around the fact that these two really should be duplicate instances. In one of them, we use <code>K1 t x</code> for the first parameter and <code>Rec0 y</code> for the second, and in the other, we flip that. Remember that <code>type Rec0 = K1 R</code>, and <code>Generics</code> doesn’t use any other type with <code>K1</code> besides <code>R</code>. That means that these are <em>functionally</em> the same, but since GHC doesn’t know that, it gets around the duplicate instance issue. Yay!</p>
+<p>We still can’t write <code>genericCoerce @Int @Int 3</code>, but now</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span>[<span class="dt">Int</span>] <span class="fu">@</span>[<span class="dt">Int</span>] [<span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb8-2" title="2">[<span class="dv">3</span>]</a></code></pre></div>
+<p>works just fine, and we even get</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" title="1"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span>[<span class="dt">Int</span>] <span class="fu">@</span>[<span class="dt">Identity</span> <span class="dt">Int</span>] [<span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb9-2" title="2">[<span class="dt">Identity</span> <span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="fu">&gt;</span> genericCoerce <span class="fu">@</span>[<span class="dt">Identity</span> (<span class="dt">Identity</span> <span class="dt">Int</span>)] <span class="fu">@</span>[<span class="dt">Int</span>] [<span class="dt">Identity</span> (<span class="dt">Identity</span> <span class="dv">3</span>)]</a>
+<a class="sourceLine" id="cb9-4" title="4">[<span class="dv">3</span>]</a></code></pre></div>
+<p>too!</p>
+<h2 id="higher-kinded-newtype-wrappers">Higher Kinded Newtype Wrappers</h2>
+<p>That stackoverflow question I mentioned that put me onto this topic actually demanded even more. The poster’s data types were actually built using the “higher-kinded types” design principle, and they look like:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="kw">newtype</span> <span class="dt">Id</span> v a <span class="fu">=</span> <span class="dt">Id</span> a</a>
+<a class="sourceLine" id="cb10-2" title="2">  <span class="kw">deriving</span> (<span class="dt">Generic</span>, <span class="dt">Show</span>)</a>
+<a class="sourceLine" id="cb10-3" title="3"></a>
+<a class="sourceLine" id="cb10-4" title="4"><span class="kw">data</span> <span class="dt">Typ</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb10-5" title="5">    <span class="dt">PredT</span><span class="ot"> ::</span> <span class="dt">Typ</span></a>
+<a class="sourceLine" id="cb10-6" title="6">    <span class="dt">ProcT</span><span class="ot"> ::</span> [<span class="dt">Typ</span>] <span class="ot">-&gt;</span> <span class="dt">Typ</span></a>
+<a class="sourceLine" id="cb10-7" title="7">    <span class="dt">IntT</span><span class="ot">  ::</span> <span class="dt">Typ</span></a>
+<a class="sourceLine" id="cb10-8" title="8">    <span class="dt">ListT</span><span class="ot"> ::</span> <span class="dt">Typ</span> <span class="ot">-&gt;</span> <span class="dt">Typ</span></a>
+<a class="sourceLine" id="cb10-9" title="9">  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb10-10" title="10"></a>
+<a class="sourceLine" id="cb10-11" title="11"><span class="kw">data</span> <span class="dt">HKTyp</span> v (<span class="ot">f ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb10-12" title="12">    <span class="dt">HKPredT</span><span class="ot"> ::</span> <span class="dt">HKTyp</span> v f</a>
+<a class="sourceLine" id="cb10-13" title="13">    <span class="dt">HKProcT</span><span class="ot"> ::</span> [<span class="dt">HKTyp</span> v f] <span class="ot">-&gt;</span> <span class="dt">HKTyp</span> v f</a>
+<a class="sourceLine" id="cb10-14" title="14">    <span class="dt">HKIntT</span><span class="ot">  ::</span> <span class="dt">HKTyp</span> v f</a>
+<a class="sourceLine" id="cb10-15" title="15">    <span class="dt">HKListT</span><span class="ot"> ::</span> f v (<span class="dt">HKTyp</span> v f) <span class="ot">-&gt;</span> <span class="dt">HKTyp</span> v f</a>
+<a class="sourceLine" id="cb10-16" title="16">  <span class="kw">deriving</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb10-17" title="17"></a>
+<a class="sourceLine" id="cb10-18" title="18"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> (f v (<span class="dt">HKTyp</span> v f)) <span class="ot">=&gt;</span> <span class="dt">Show</span> (<span class="dt">HKTyp</span> v f)</a></code></pre></div>
+<p>The question is: Can we coerce between <code>Typ</code> and <code>HKTyp Id v</code>? Alas, <code>genericCoerce</code> breaks down again. This time, it’s because of that pesky use of <code>f</code> within the definition of <code>HKListT</code>. The types are not <em>generically coercible</em> because the <code>Generic</code> representation of a newtype wrapped data type and the data type itself are actually different, but they’re also not <em>data coercible</em> because <code>Typ</code> and <code>HKTyp Id v</code> are not <code>Coercible</code> so obviously <code>Typ</code> and <code>Identity (HKType Id v)</code> are not <code>Coercible</code> either. It turns out we can cheat a bit to get around this hiccup too, once again using some scary looking incoherent instances:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="kw">instance</span> <span class="ot">{-# INCOHERENT #-}</span> (<span class="dt">Generic</span> x, <span class="dt">Rep</span> x <span class="fu">~</span> <span class="dt">D1</span> m x', <span class="dt">GenericCoerce</span> x' y) <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> (<span class="dt">C1</span> m2 (<span class="dt">S1</span> m3 (<span class="dt">Rec0</span> x))) y <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-2" title="2">  genericCoerce' <span class="fu">=</span> genericCoerce' <span class="fu">.</span> unM1 <span class="fu">.</span> from <span class="fu">.</span> unK1 <span class="fu">.</span> unM1 <span class="fu">.</span> unM1</a>
+<a class="sourceLine" id="cb11-3" title="3"></a>
+<a class="sourceLine" id="cb11-4" title="4"><span class="kw">instance</span> <span class="ot">{-# INCOHERENT #-}</span> (<span class="dt">Generic</span> y, <span class="dt">Rep</span> y <span class="fu">~</span> <span class="dt">D1</span> m y', <span class="dt">GenericCoerce</span> x y') <span class="ot">=&gt;</span> <span class="dt">GenericCoerce</span> x (<span class="dt">C1</span> m2 (<span class="dt">S1</span> m3 (<span class="dt">Rec0</span> y))) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-5" title="5">  genericCoerce' <span class="fu">=</span> <span class="dt">M1</span> <span class="fu">.</span> <span class="dt">M1</span> <span class="fu">.</span> <span class="dt">K1</span> <span class="fu">.</span> to <span class="fu">.</span> <span class="dt">M1</span> <span class="fu">.</span> genericCoerce'</a></code></pre></div>
+<p>These instances allow us to unwrap (or rewrap if we’re going in the other direction) a newtype wrapper that has already been converted to its <code>Rep</code>. It’s a little janky, but it definitely does the trick. For instance, we can now define:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="ot">promoteHK ::</span> <span class="dt">Typ</span> <span class="ot">-&gt;</span> <span class="dt">HKTyp</span> v <span class="dt">Id</span></a>
+<a class="sourceLine" id="cb12-2" title="2">promoteHK <span class="fu">=</span> genericCoerce</a>
+<a class="sourceLine" id="cb12-3" title="3"></a>
+<a class="sourceLine" id="cb12-4" title="4"><span class="ot">demoteHK ::</span> <span class="dt">HKTyp</span> v <span class="dt">Id</span> <span class="ot">-&gt;</span> <span class="dt">Typ</span></a>
+<a class="sourceLine" id="cb12-5" title="5">demoteHK <span class="fu">=</span> genericCoerce</a></code></pre></div>
+<p>and then see them in action:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="fu">&gt;</span> promoteHK <span class="dt">PredT</span></a>
+<a class="sourceLine" id="cb13-2" title="2"><span class="dt">HKPredT</span></a>
+<a class="sourceLine" id="cb13-3" title="3"></a>
+<a class="sourceLine" id="cb13-4" title="4"><span class="fu">&gt;</span> promoteHK (<span class="dt">ListT</span> <span class="dt">PredT</span>)</a>
+<a class="sourceLine" id="cb13-5" title="5"><span class="dt">HKListT</span> (<span class="dt">Id</span> <span class="dt">HKPredT</span>)</a>
+<a class="sourceLine" id="cb13-6" title="6"></a>
+<a class="sourceLine" id="cb13-7" title="7"><span class="fu">&gt;</span> promoteHK (<span class="dt">ListT</span> (<span class="dt">ListT</span> (<span class="dt">ListT</span> <span class="dt">PredT</span>)))</a>
+<a class="sourceLine" id="cb13-8" title="8"><span class="dt">HKListT</span> (<span class="dt">Id</span> (<span class="dt">HKListT</span> (<span class="dt">Id</span> (<span class="dt">HKListT</span> (<span class="dt">Id</span> <span class="dt">HKPredT</span>)))))</a>
+<a class="sourceLine" id="cb13-9" title="9"></a>
+<a class="sourceLine" id="cb13-10" title="10"><span class="fu">&gt;</span> demoteHK (<span class="dt">HKProcT</span> [<span class="dt">HKIntT</span>, <span class="dt">HKPredT</span>])</a>
+<a class="sourceLine" id="cb13-11" title="11"><span class="dt">ProcT</span> [<span class="dt">IntT</span>,<span class="dt">PredT</span>]</a></code></pre></div>
+<h2 id="performance">Performance</h2>
+<p>One really nice thing about <code>coerce</code> is that, like newtype wrappers, it has no runtime cost. On the other hand, <code>genericCoerce</code> definitely has a cost. But why should it? The whole idea behind <code>genericCoerce</code> is that the structure of the input type and the output type are the same, either because their <em>representations</em> are the same (and we’re assuming the <code>Rep</code> from <code>Generic</code> is a good proxy for the memory representation) or because they’re equivalent up to newtype wrappers. Therefore, if we trust that our types are doing the right thing, we can simply take a shortcut on the implementation. Indeed, we can just write:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" title="1"><span class="ot">genericCoerce ::</span> (<span class="dt">Generic</span> x, <span class="dt">Generic</span> y, <span class="dt">GenericCoerce</span> (<span class="dt">Rep</span> x) (<span class="dt">Rep</span> y)) <span class="ot">=&gt;</span> x <span class="ot">-&gt;</span> y</a>
+<a class="sourceLine" id="cb14-2" title="2">genericCoerce <span class="fu">=</span> unsafeCoerce</a></code></pre></div>
+<p>The result will always be the same as the old <code>genericCoerce</code>, but the performance will be much better. Looked at another way, this is much safer than <code>unsafeCoerce</code> because it’s guarded by <code>GenericCoerce</code>.</p>
+<h3 id="caveat">Caveat</h3>
+<p>As far as I’m aware, there are no guarantees from GHC about how memory is utilized, which means that our use of <code>unsafeCoerce</code> is still, to some extent, unsafe. That said, excluding the various incoherent instances we added, the original version of <code>genericCoerce</code> converts a data type with phantom type parameters into the same datatype just with different phantom parameters. Technically, I can provide no guarantee that GHC will store multiple instances of the same runtime data the same way, but it seems to me like a pretty easy assumption to make. Once we add in the incoherent instance shenanigans, we’re standing on less solid grounds, but the fact that it all works is some consolation.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Unfortunately, we were not able to build a truly more generic version of <code>coerce</code> (e.g., <code>genericCoerce</code> still can’t coerce between <code>Int</code> and anything else since <code>Int</code> is not an instance of <code>Generic</code>), but <code>genericCoerce</code> does allow us a surprising amount of freedom over <code>Generic</code> types. For instance, we get type-safe coercions between any two <code>Generic</code> data types that have the same structure, which could be useful for users of higher-kinded data types.</p>
+<p>Another downside of our implementation is in the use of incoherent instances, which, as mentioned above are <strong>considered harmful</strong>. Incoherent instances have a bad habit of seeming pretty good until you stretch them to their limits, at which point they spontaneously do something unexpected. I’m not sure if that danger would rear its ugly hear here, but it is rather frustrating that there’s no other way to write the <code>K1</code>/<code>Rec0</code> instance(s) that we were after.</p>
+    </section>
+<script src="https://giscus.app/client.js" data-repo="dwincort/dwincort.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkyNjI3OTE3NTQ=" data-category="Post Comments" data-category-id="DIC_kwDOD6niSs4B_3eK" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="0" data-theme="dark" data-lang="en" crossorigin="anonymous" async>
+</script>
+</article>
+
+    </main>
+
+    <footer>
+      <quote>
+        <blockquote data-animation-role="quote">
+          quotetext
+        </blockquote>
+        <figcaption class="source">&mdash; quoteattrib</figcaption>
+      </quote>
+      <p> Site generated by <a href="http://jaspervdj.be/hakyll">Hakyll</a>.
+    </footer>
+
+  <script>
+    var myQs = new Array();
+    myQs[0] = "Real stupidity beats artificial intelligence every time. -- Terry Pratchett";
+    myQs[1] = "He who wonders discovers that this in itself is wonder. -- M. C. Escher";
+    myQs[2] = "Simplicity is the ultimate sophistication. -- Leonardo da Vinci";
+    myQs[3] = "Time is like a drug. Too much of it kills you. -- Terry Pratchett";
+    myQs[4] = "When it came to getting weird things done, sane beat mad hands down. -- Terry Pratchett";
+    myQs[5] = "Students, eh? Love 'em or hate 'em, you're not allowed to hit 'em with a shovel. -- Terry Pratchett";
+    myQs[6] = "You get ideas from daydreaming. You get ideas from being bored. You get ideas all the time. -- Neil Gaiman";
+    myQs[7] = "I don't know half of you half as well as I should like; and I like less than half of you half as well as you deserve. -- Bilbo Baggins, from J.R.R Tolkien's Lord of the Rings";
+    myQs[8] = "Only the insane equate pain with success. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[9] = "Only a few find the way; some don't recognize it when they do; some don't ever want to. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[10] = "Always collect what's useful. Reject only your ignorance, and you may survive. -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[11] = "Those who say there's nothing like a nice cup of tea for calming the nerves never had real tea. It's like a syringe of adrenaline straight to the heart! -- Cheshire Cat, from American Mcgee's Alice";
+    myQs[12] = "My, Earth really is full of things -- King of All Cosmos, from Katamari Damacy";
+    myQs[13] = "The way I see it, if you're going to build a time machine into a car, why not do it with some style? -- Doc, from Back to the Future";
+    myQs[14] = "I know because I was there. -- Wadsworth, from Clue";
+    myQs[15] = "No meaning yes, or no meaning no? -- Colonel Mustard, from Clue";
+    myQs[16] = "I feel like I could... like I could... like I could... TAKE ON THE WORLD!! -- Purple Tentacle, from Day of the Tentacle";
+    myQs[17] = "You know what they say: \"If you want to save the world, you have to push a few old ladies down the stairs\". -- Bernard, from Day of the Tentacle";
+    myQs[18] = "Wait, I’ve got an idea, and it doesn’t require high explosives. -- Max, from Sam'n'Max Hit the Road";
+    myQs[19] = "You have this really convenient subspace highway running through your head that I like to use. It's, like, 3 miles in 15 seconds. -- Ramona, from Scott Pilgrim vs The World";
+    myQs[20] = "Do you think that's air you're breathing now?  Stop trying to hit me and hit me! -- Morpheus, from The Matrix";
+    myQs[21] = "Ray, when someone asks you if you're a god, you say \"Yes!\" -- Winston, from Ghostbusters";
+    myQs[22] = "So, Lone Starr, now you see that evil will always triumph, because good is dumb. -- Dark Helmet, from Spaceballs";
+    myQs[23] = "People assume that time is a strict progression of cause to effect, but actually — from a non-linear, non-subjective viewpoint — it's more like a big ball of wibbly-wobbly... timey-wimey... stuff. -- Doctor Who";
+    myQs[24] = "I must not fear. Fear is the mind-killer. Fear is the little-death that brings total obliteration. -- Paul Atreides, from Frank Herbert's Dune";
+    myQs[25] = "Science fiction writers foresee the inevitable, and although problems and catastrophes may be inevitable, solutions are not. -- Isaac Asimov";
+    myQs[26] = "To succeed, planning alone is insufficient. One must improvise as well. -- Isaac Asimov";
+    myQs[27] = "Remember - the enemy's gate is down. -- Ender, from Orson Scott Card's Ender's Game";
+    myQs[28] = "Space is big. Really big. You just won't believe how vastly, hugely, mindbogglingly big it is. I mean, you may think it's a long way down the road to the chemist's, but that's just peanuts to space. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[29] = "The chances of finding out what's really going on in the universe are so remote, the only thing to do is hang the sense of it and keep yourself occupied. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[30] = "Hey, you sass that hoopy Ford Prefect? There's a frood who really knows where his towel is. -- Douglas Adams, The Hitchhiker's Guide to the Galaxy";
+    myQs[31] = "There's always money in the banana stand. -- George Bluth, from Arrested Development";
+    myQs[32] = "Introducing \"the double decker couch\", so everyone could watch TV together and be buddies! -- Emmet, from The Lego Movie";
+    myQs[33] = "Ah! Curse your sudden but inevitable betrayal! -- Wash, from Firefly";
+    myQs[34] = "Nothing can happen till you swing the bat. -- Haruko, from FLCL";
+    myQs[35] = "Dear God. What is it like in your funny little brains? It must be so boring. -- Sherlock";
+    myQs[36] = "You, [subject name here], must be the pride of [subject hometown here]! -- GLaDOS, from Portal";
+    myQs[37] = "Please note that we have added a consequence for failure. Any contact with the chamber floor will result in an \"unsatisfactory\" mark on your official testing record, followed by death. Good luck! -- GLaDOS, from Portal";
+    myQs[38] = "Did you know you can donate one or all of your vital organs to the Aperture Science Self-Esteem Fund for Girls? It's true! -- GLaDOS, from Portal";
+    myQs[39] = "You euthanized your faithful Companion Cube more quickly than any test subject on record. Congratulations. -- GLaDOS, from Portal";
+    myQs[40] = "Look at me still talking when there's Science to do -- GLaDOS, from Portal";
+    myQs[41] = "The Human Mind: 600 miles of synaptic fiber, five and a half ounces of cranial fluid, 1500 grams of complex neural matter... a three-pound pile of dreams. -- Raz, from Psychonauts";
+
+
+    var range = myQs.length;
+    var index;
+    var quote;
+    var res;
+    var attribution;
+    var bodyGrab;
+
+    function getQuote()
+    {
+      index = Math.floor(Math.random()*range);
+      quote = myQs[index];
+      res = quote.split(" -- ");
+      quote = res[0];
+      attribution = res[1];
+    }
+
+    var blocks = document.getElementsByTagName("blockquote");
+    var captions = document.getElementsByTagName("figcaption");
+    for (var i=0;i<blocks.length;i++)
+    {
+      getQuote();
+      bodyGrab = blocks[i].innerHTML;
+      bodyGrab = bodyGrab.replace("quotetext", quote);
+      blocks[i].innerHTML = bodyGrab;
+      bodyGrab = captions[i].innerHTML;
+      bodyGrab = bodyGrab.replace("quoteattrib", attribution);
+      captions[i].innerHTML = bodyGrab;
+    }
+  </script>
+  </body>
+</html>

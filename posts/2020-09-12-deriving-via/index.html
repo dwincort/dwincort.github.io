@@ -33,7 +33,7 @@
         </h1>
       </div>
       <div class="site-description">
-        <p>Senior Software Engineer at Luminous Computing</p>
+        <p>Principal Software Engineer at Luminous Computing</p>
       </div>
 
       <nav>
@@ -172,6 +172,8 @@
 <a class="sourceLine" id="cb10-3" title="3">  <span class="dt">ToUptext</span> x <span class="fu">=</span> x</a></code></pre></div>
 <p>and then make the override modifications: <code>Rec.Map ToUptext (Rec.NativeRow MyRec)</code>. This in itself is still slightly ugly, but unsaturated type families give us the ability to write more higher-order type functions, such as a row-types <code>Filter</code>. From there, it’s a brief hop to a type-level function <code>FieldsOfTo MyRec Text Uptext</code> which would produce a row-type containing all of the fields of <code>MyRec</code> that had the type <code>Text</code>, now with the type <code>Uptext</code>. Just <code>.+</code> that with any other type modifications you want to make, and you’re all set.</p>
     </section>
+<script src="https://giscus.app/client.js" data-repo="dwincort/dwincort.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkyNjI3OTE3NTQ=" data-category="Post Comments" data-category-id="DIC_kwDOD6niSs4B_3eK" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="0" data-theme="dark" data-lang="en" crossorigin="anonymous" async>
+</script>
 </article>
 
     </main>
