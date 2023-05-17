@@ -12,9 +12,9 @@ I was raised in Chatham, NJ, where my mother still works as a psychoanalyst.  My
 father lives in the Philadelphia area and runs [Cort Consulting
 Group](http://www.cortconsulting.com/).  My step-father is the author of
 [Seeking Degrees of Freedom](http://www.amazon.com/Seeking-Degrees-Freedom-Ward-Dill/dp/1503329631/)
-and the woodworker of [Engrained Wood Art](http://engrainedwood.com/).  My
-sister Elizabeth and her husband Mike live in Washington DC.  I also have a
-half-brother and a bunch of step-siblings scattered around.
+and is a prolific woodworker.  My sister Elizabeth and her husband Mike live in
+Washington DC.  I also have a half-brother and a bunch of step-siblings
+scattered around.
 
 
 I married my wife Jane on the tenth anniversary of us being together.  Jane is a graduate student in Biological Anthropology at Yale University working with [David Watts](http://anthropology.yale.edu/people/david-watts).
@@ -45,6 +45,6 @@ I'm also a fan of escape rooms and modern "euro"-style board games.  My favorite
 
 I love to ski (and occasionally snowboard).  Whenever I get a chance, I try to find a good mountain and hit the glades.
 
-I started playing the trombone when I was in grade school, and I still try to pull it out as often as I can.  At Brown University, I played in the [Jazz Ensemble](http://www.brown.edu/Departments/Music/ensembles/jazzband.html) (2005-2008), and when I lived in Boston, I was a member of the [Charles River Wind Ensemble](http://www.crwe.org/) (2008-2009).  I was also involved in the Computer Science Department Ska Band Skacappella at Yale for its brief existence (2010).
+I started playing the trombone when I was in grade school, and I still try to pull it out as often as I can.  At Brown University, I played in the [Jazz Ensemble](http://www.brown.edu/Departments/Music/ensembles/jazzband.html) (2005-2008), and when I lived in Boston, I was a member of the [Charles River Wind Ensemble](http://www.crwe.org/) (2008-2009).  I was also involved in the Computer Science Department Ska Band "Skacappella" at Yale for its brief existence (2010).
 
 <br><br><br><br><br><br><br>

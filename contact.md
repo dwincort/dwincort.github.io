@@ -9,8 +9,8 @@ contact: true
 
 <overlayText>
   <h2><bigname>Daniel Winograd‑Cort</bigname></h2>
-  Luminous Computing<br>
-  Mountain View, CA
+  <!-- Luminous Computing<br> -->
+  Southbury, CT
 </overlayText>
 </div>
 
