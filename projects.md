@@ -6,7 +6,7 @@ projects: true
 
 # Projects
 
-You can check out the coding projects I'm developing and maintaining by looking at my [github account](https://github.com/dwincort).  These projects are all in functional languages, with my recent work on Adaptive Fuzz in [OCaml](http://ocaml.org/) and the rest in [Haskell](http://www.haskell.org/haskellwiki/Haskell).
+You can check out the coding projects I'm developing and maintaining by looking at my [github account](https://github.com/dwincort).  These projects are all in functional languages, with my work on Adaptive Fuzz in [OCaml](http://ocaml.org/) and the rest in [Haskell](http://www.haskell.org/haskellwiki/Haskell).
 
 ## Row-Types
 

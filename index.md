@@ -4,6 +4,4 @@ author: Daniel Winograd-Cort
 
 <center><img class="frontimage" src="/images/Dan_on_castle.jpg" alt=""/></center>
 
-Daniel Winograd-Cort is a Principal Software Engineer at [Luminous Computing](https://luminous.co/) where he uses Haskell and methods from programming language theory to help answer hardware design questions.  He earned his undergraduate degree from Brown University in 2008 and his PhD from Yale University in 2015.
-
-Daniel's main interests lie in programming languages, although he often thinks about other problems when they're particularly interesting.
+Daniel Winograd-Cort uses the tools of functional programming and programming language theory toward building high-performance, secure, sound, and elegant technologies that will be beneficial to all.  He is a Co-Founder of Nectry Inc., which allows users to create and manage custom web apps and portals to optimize their workflow.  He earned his undergraduate degree from Brown University in 2008 and his PhD from Yale University in 2015.

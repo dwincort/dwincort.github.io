@@ -9,11 +9,11 @@ I am not currently teaching in any official capacity, but it is something that I
 enjoy very much.  For that reason, I still keep my statement of teaching
 philosophy available [here](/data/dwcTeachingStatement.pdf).  I have spent many
 years as a teaching assistant for computer science classes, and I have been a
-private tutor for high school math, chemistry, and physics.  
+private tutor for high school math, chemistry, and physics.
 
 ## Recent Teaching
 
-I have taught (and continued to learn!) Haskell at my recent jobs, but not in
+I taught (and continued to learn!) Haskell at previous jobs, but not in
 formal settings.  Additionally, I taught some basic computer science and
 practical Python skills to a friend working in biological sciences, allowing him
 to write a script for identifying a select agent pathogen, ultimately leading to
