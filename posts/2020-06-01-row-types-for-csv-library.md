@@ -2,6 +2,7 @@
 toptitle: Row types for CSV library
 keywords: haskell, row-types, csv
 repost: July 23, 2019
+description: A response to Oleg Grenrus's Fancy types for CSV library, showing how row-types records can make CSV encoding and decoding both type safe and ergonomic.
 ---
 
 # Row types for CSV library

@@ -1,6 +1,7 @@
 ---
 toptitle: Teaching
 teaching: true
+description: Daniel Winograd-Cort's teaching experience, from teaching fellowships at Yale to TA work at Brown.
 ---
 
 # Teaching

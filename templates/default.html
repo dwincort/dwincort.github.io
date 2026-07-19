@@ -9,17 +9,24 @@
     $if(keywords)$<meta name="keywords" content="$keywords$">$endif$
 
     <link rel="shortcut icon" type="image/x-icon" href="/images/haskell-logo.png?format=100w" />  <!-- href="/favicon.ico?format=100w" -->
-    <link rel="canonical" href="http://www.danwc.com"/>
+    <link rel="canonical" href="$root$$url$"/>
+    <meta name="description" content="$description$"/>
     <meta property="og:site_name" content="Daniel Winograd‑Cort"/>
     <meta property="og:title" content="$if(toptitle)$$toptitle$ — Daniel Winograd-Cort$else$Daniel Winograd-Cort$endif$"/>
+    <meta property="og:description" content="$description$"/>
     <meta property="og:url" content="$root$$url$"/>
-    <meta property="og:type" content="website"/>
+    <meta property="og:type" content="$if(date)$article$else$website$endif$"/>
+    <meta property="og:image" content="$root$/images/social-card.jpg"/>
+    <meta property="og:image:width" content="1200"/>
+    <meta property="og:image:height" content="630"/>
+    <meta property="og:image:alt" content="Photo of Daniel Winograd-Cort"/>
     <meta itemprop="name" content="$if(toptitle)$$toptitle$ — Daniel Winograd-Cort$else$Daniel Winograd-Cort$endif$"/>
     <meta itemprop="url" content="$root$$url$"/>
-    <meta name="twitter:title" content="Daniel Winograd‑Cort"/>
-    <meta name="twitter:url" content="$root$$url$"/>
-    <meta name="twitter:card" content="summary"/>
-    <meta name="description" content="" />
+    <meta itemprop="image" content="$root$/images/social-card.jpg"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="$if(toptitle)$$toptitle$ — Daniel Winograd-Cort$else$Daniel Winograd-Cort$endif$"/>
+    <meta name="twitter:description" content="$description$"/>
+    <meta name="twitter:image" content="$root$/images/social-card.jpg"/>
 
     <link rel="stylesheet" href="/css/default.css" />
   </head>

@@ -88,7 +88,9 @@ main = do
     create ["atom.xml"] $ do
       route idRoute
       compile $ do
-        let feedCtx = postCtx <> bodyField "description"
+        -- bodyField first so the feed's description is the full post body,
+        -- not the short snippet each post now sets in its frontmatter.
+        let feedCtx = bodyField "description" <> postCtx
         posts <- fmap (take 10) . recentFirst =<<
           loadAllSnapshots "posts/*" "content"
         renderAtom myFeedConfiguration feedCtx posts
@@ -96,7 +98,9 @@ main = do
     create ["rss.xml"] $ do
       route idRoute
       compile $ do
-        let feedCtx = postCtx <> bodyField "description"
+        -- bodyField first so the feed's description is the full post body,
+        -- not the short snippet each post now sets in its frontmatter.
+        let feedCtx = bodyField "description" <> postCtx
         posts <- fmap (take 10) . recentFirst =<<
           loadAllSnapshots "posts/*" "content"
         renderRss myFeedConfiguration feedCtx posts
@@ -126,10 +130,17 @@ topLevelPages = fromList
   , "contact.md"]
 
 root :: String
-root = "https://danwc.com"
+root = "https://www.danwc.com"
 
+-- Pages can override "description" in their frontmatter; the constant here is
+-- the site-wide fallback used for search/social snippets.
 defaultContext' :: Context String
-defaultContext' = constField "root" root <> defaultContext
+defaultContext' =
+  constField "root" root <>
+  defaultContext <>
+  constField "description" "Daniel Winograd-Cort is a functional programmer, \
+    \programming language researcher, and CTO and Co-Founder of Nectry. \
+    \Posts on Haskell, type systems, and programming language design."
 
 postCtx :: Context String
 postCtx = dateField "date" "%B %e, %Y" <> defaultContext'
@@ -145,7 +156,7 @@ myFeedConfiguration = FeedConfiguration
     , feedDescription = "This feed is about topics I'm interested in"
     , feedAuthorName  = "Daniel Winograd-Cort"
     , feedAuthorEmail = "dan@danwc.com"
-    , feedRoot        = "http://www.danwc.com"
+    , feedRoot        = "https://www.danwc.com"
     }
 
 

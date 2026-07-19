@@ -1,6 +1,7 @@
 ---
 toptitle: Projects
 projects: true
+description: Software projects by Daniel Winograd-Cort, including the row-types Haskell library, Adaptive Fuzz, UISF, and Euterpea.
 ---
 
 

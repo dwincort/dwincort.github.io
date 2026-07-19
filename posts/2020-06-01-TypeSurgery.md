@@ -2,6 +2,7 @@
 toptitle: Type Surgery
 keywords: haskell, row-types, surgery, native
 repost: April 8, 2019
+description: Using the row-types library to perform data type surgery, generically taking record types apart and stitching them back together to adapt generic instances.
 ---
 
 # Type Surgery

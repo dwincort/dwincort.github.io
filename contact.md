@@ -1,6 +1,7 @@
 ---
 title: Contact
 contact: true
+description: How to get in touch with Daniel Winograd-Cort.
 ---
 
 <div class="overlay">

@@ -1,6 +1,7 @@
 ---
 toptitle: Generic Coerce
 keywords: haskell, Generics, coerce
+description: Using GHC Generics to safely convert between types that are almost Coercible, like records whose fields are wrapped in Identity.
 ---
 
 # Generic Coerce

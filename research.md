@@ -1,6 +1,7 @@
 ---
 toptitle: Research
 research: true
+description: Daniel Winograd-Cort's programming languages research, including functional reactive programming and differential privacy, with publications.
 ---
 
 # Research interests

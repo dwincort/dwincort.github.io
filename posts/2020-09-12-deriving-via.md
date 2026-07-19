@@ -2,6 +2,7 @@
 toptitle: Overriding Type Class Instances
 keywords: haskell, row-types, instances, DerivingVia
 repost: April 10, 2020
+description: Using DerivingVia with row-types to override type class instances for records, no type-level programming tricks required.
 ---
 
 # Overriding Type Class Instances

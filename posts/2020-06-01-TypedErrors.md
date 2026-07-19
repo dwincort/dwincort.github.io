@@ -2,6 +2,7 @@
 toptitle: Typed Errors
 keywords: haskell, row-types, errors, native
 repost: April 8, 2019
+description: How row-types variants can serve as open variant types in Haskell, making typed error handling flexible and composable.
 ---
 
 # Typed Errors

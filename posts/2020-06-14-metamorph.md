@@ -1,6 +1,7 @@
 ---
 toptitle: Row-Types Metamorphism
 keywords: haskell, row-types, metamorph
+description: What it means to map and fold over heterogeneous records, and how the row-types metamorph function generalizes both.
 ---
 
 
