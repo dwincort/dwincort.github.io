@@ -1,4 +1,4 @@
-# Builds the Hakyll site on every push. On pushes to the "hakyll" branch, the
+# Builds the Hakyll site on every push. On pushes to the "main" branch, the
 # generated _site/ is additionally deployed to GitHub Pages directly from the
 # workflow artifact — no generated-files branch involved.
 name: Build and deploy site
@@ -53,7 +53,7 @@ jobs:
           path: _site
 
   deploy:
-    if: github.ref == 'refs/heads/hakyll'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
