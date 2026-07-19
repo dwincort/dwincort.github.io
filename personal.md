@@ -1,7 +1,7 @@
 ---
 toptitle: Personal
 personal: true
-description: A bit about Daniel Winograd-Cort outside of work: family, accomplishments, and hobbies.
+description: A bit about Daniel Winograd-Cort outside of work — family, accomplishments, and hobbies.
 ---
 
 

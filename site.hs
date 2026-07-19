@@ -20,12 +20,6 @@ main = do
       route   idRoute
       compile compressCssCompiler
 
-    match "catcam.html" $ do
-      route cleanRoute
-      compile $ pandocCompiler
-        >>= loadAndApplyTemplate "templates/encrypted.html" defaultContext'
-        >>= relativizeUrls
-
     match (fromList ["index.md", "404.md"]) $ do
       route $ setExtension "html"
       compile $ pandocCompiler
