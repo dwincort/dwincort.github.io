@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal website (https://danwc.com) built with [Hakyll](https://jaspervdj.be/hakyll/), a Haskell static site generator. The site generator itself is `site.hs`; content lives in Markdown files at the repo root and in `posts/`.
 
-## Branch model — important
+## Branches and deployment
 
 - **`hakyll` is the source branch and the default branch.** All work happens here.
-- **`master` holds only the generated site** and is written to exclusively by CI. Never commit to or modify `master` directly.
-- On every push, CircleCI (`.circleci/config.yml`) builds the site; on pushes to `hakyll`, it additionally commits the generated `_site/` contents to `master`, which GitHub Pages serves.
+- GitHub Actions (`.github/workflows/pages.yml`) builds the site on every push; on pushes to `hakyll` it also deploys `_site/` to GitHub Pages directly from the workflow artifact.
+- The `master` branch is a leftover from the old CircleCI setup (which committed the generated site there) and is no longer used.
 
 ## Commands
 
